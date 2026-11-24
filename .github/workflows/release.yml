@@ -1,0 +1,51 @@
+name: Build & Release VoltPulse
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag or default
+        id: meta
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like "refs/tags/v*") {
+            $ver = $env:GITHUB_REF.Replace("refs/tags/v", "")
+          } else {
+            $ver = "3.0.0-ci"
+          }
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Validate JS syntax
+        shell: pwsh
+        run: node --check ui/app.js
+
+      - name: Build VoltPulse & Generate Release ZIP
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Version "${{ steps.meta.outputs.version }}"
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoltPulse-v${{ steps.meta.outputs.version }}-win-x64
+          path: releases/VoltPulse-v*.zip
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: releases/VoltPulse-v*.zip

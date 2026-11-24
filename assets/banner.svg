@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B101B"/>
+      <stop offset="55%" stop-color="#111C33"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#34D399"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.22"/>
+      <stop offset="50%" stop-color="#34D399" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#A78BFA" stop-opacity="0.22"/>
+    </linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#94A3B8" stroke-opacity="0.06" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="320" rx="22" fill="url(#bg)"/>
+  <rect width="1200" height="320" rx="22" fill="url(#grid)"/>
+  <ellipse cx="220" cy="160" rx="230" ry="130" fill="#38BDF8" opacity="0.09"/>
+  <ellipse cx="960" cy="150" rx="260" ry="130" fill="#34D399" opacity="0.08"/>
+  <rect x="1" y="1" width="1198" height="318" rx="21" fill="none" stroke="#38BDF8" stroke-opacity="0.24" stroke-width="1.5"/>
+
+  <!-- Left Logo Emblem -->
+  <g transform="translate(88, 92)">
+    <circle cx="68" cy="68" r="64" fill="#0F172A" stroke="url(#accent)" stroke-width="4.5"/>
+    <path d="M76 22L38 74h27L57 114l38-52H68L76 22z" fill="url(#accent)"/>
+  </g>
+
+  <!-- Title & Subtitle -->
+  <text x="262" y="144" fill="#F8FAFC" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, sans-serif" font-size="60" font-weight="800" letter-spacing="-1.5">VoltPulse</text>
+  <rect x="556" y="106" width="84" height="32" rx="16" fill="#34D399" fill-opacity="0.16" stroke="#34D399" stroke-opacity="0.5"/>
+  <text x="598" y="127" text-anchor="middle" fill="#34D399" font-family="Segoe UI, sans-serif" font-size="14" font-weight="700">v3.0.0</text>
+
+  <text x="264" y="182" fill="#94A3B8" font-family="Segoe UI, sans-serif" font-size="21" font-weight="500">PC Power, Voltage, Thermal, Network &amp; SSD Health Monitor for Windows</text>
+
+  <!-- Feature Chips -->
+  <g transform="translate(264, 210)" font-family="Segoe UI, sans-serif" font-size="13.5" font-weight="600">
+    <rect x="0" y="0" width="150" height="32" rx="16" fill="#38BDF8" fill-opacity="0.13" stroke="#38BDF8" stroke-opacity="0.35"/>
+    <text x="75" y="21" text-anchor="middle" fill="#38BDF8">⚡ Watts &amp; kWh Cost</text>
+
+    <rect x="164" y="0" width="144" height="32" rx="16" fill="#34D399" fill-opacity="0.13" stroke="#34D399" stroke-opacity="0.35"/>
+    <text x="236" y="21" text-anchor="middle" fill="#34D399">🔌 ATX ±5% Rails</text>
+
+    <rect x="322" y="0" width="146" height="32" rx="16" fill="#FBBF24" fill-opacity="0.13" stroke="#FBBF24" stroke-opacity="0.35"/>
+    <text x="395" y="21" text-anchor="middle" fill="#FBBF24">🌡️ CPU/GPU Temps</text>
+
+    <rect x="482" y="0" width="148" height="32" rx="16" fill="#A78BFA" fill-opacity="0.13" stroke="#A78BFA" stroke-opacity="0.35"/>
+    <text x="556" y="21" text-anchor="middle" fill="#A78BFA">💾 SSD S.M.A.R.T.</text>
+
+    <rect x="644" y="0" width="154" height="32" rx="16" fill="#FB7185" fill-opacity="0.13" stroke="#FB7185" stroke-opacity="0.35"/>
+    <text x="721" y="21" text-anchor="middle" fill="#FB7185">🖥️ Floating Overlay</text>
+  </g>
+
+  <!-- Subtle Sparkline on Right -->
+  <g transform="translate(860, 56)" opacity="0.85">
+    <rect x="0" y="0" width="275" height="122" rx="14" fill="#141D2E" stroke="#38BDF8" stroke-opacity="0.22"/>
+    <text x="16" y="24" fill="#94A3B8" font-family="Segoe UI, sans-serif" font-size="11" font-weight="600">REAL-TIME TELEMETRY</text>
+    <text x="16" y="50" fill="#38BDF8" font-family="Segoe UI, sans-serif" font-size="24" font-weight="700">128.4 W</text>
+    <text x="134" y="50" fill="#34D399" font-family="Segoe UI, sans-serif" font-size="15" font-weight="700">52°C</text>
+    <text x="195" y="50" fill="#A78BFA" font-family="Segoe UI, sans-serif" font-size="15" font-weight="700">98% SSD</text>
+    <polyline points="16,102 48,94 82,98 114,76 146,84 180,68 214,74 256,62" fill="none" stroke="url(#accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="256" cy="62" r="4.5" fill="#34D399"/>
+  </g>
+</svg>

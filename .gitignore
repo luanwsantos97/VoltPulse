@@ -1,0 +1,15 @@
+# Build & Release artifacts
+dist/
+releases/
+lib/
+deps/
+_tmp_*/
+*.zip
+
+# IDE & OS
+.vs/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini
