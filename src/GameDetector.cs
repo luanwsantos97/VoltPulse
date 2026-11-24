@@ -4,10 +4,17 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Windows.Forms;
 
 namespace PcPowerMonitor
 {
+    /// <summary>
+    /// Detector cirurgico de jogos (zero falsos positivos com Lightshot, Antigravity, navegadores, apps Electron, etc.).
+    /// Criterios rigorosos:
+    /// 1) Processo dentro de diretorio oficial de biblioteca de jogos (Steam, Epic, Riot, Xbox, EA, Ubisoft, Battle.net, GOG, Rockstar, HoYoverse...)
+    /// 2) Executavel conhecido de jogo popular (Valorant, LoL, CS2, GTA5, Fortnite, Roblox, Minecraft, Cyberpunk, Elden Ring, etc.)
+    /// 3) Processo em primeiro plano carregando DLL exclusiva de Engine/SDK de jogo (UnityPlayer, steam_api, EOSSDK, fmod, dinput8, nvngx_dlss, amd_ags_x64, PhysX, bink2w64)
+    ///    e explicitamente NAO sendo app de captura, navegador, IDE ou Electron/CEF/WebView2.
+    /// </summary>
     public class GameDetector
     {
         private static readonly string[] GameLibraryMarkers = new[]
@@ -20,23 +27,82 @@ namespace PcPowerMonitor
             @"\gog galaxy\games\",
             @"\ubisoft game launcher\games\",
             @"\ea games\",
-            @"\origin games\"
+            @"\origin games\",
+            @"\rockstar games\",
+            @"\hoyoverse\",
+            @"\mihoyo\",
+            @"\wargaming.net\"
+        };
+
+        private static readonly HashSet<string> KnownGameExecutables = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "cs2", "csgo", "valorant-win64-shipping", "league of legends", "fortniteclient-win64-shipping",
+            "gta5", "gtav", "fivem_gtaprocess", "rdr2", "cyberpunk2077", "eldenring", "dota2",
+            "tslgame", "r5apex", "overwatch", "rocketleague", "robloxplayerbeta", "genshinimpact",
+            "starrail", "zenlesszonezero", "cod", "mw2", "blackops6", "helldivers2", "palworld-win64-shipping",
+            "bg3", "bg3_dx11", "witcher3", "hogwartslegacy", "starfield", "fallout4", "skyrimse",
+            "fc24", "fc25", "ea sports fc 25", "nba2k24", "nba2k25", "forzahorizon5", "fh5",
+            "rainbowsix", "rainbowsix_vulkan", "destiny2", "warframe.x64", "pathofexile", "pathofexile_x64",
+            "diablo iv", "wow", "wowclassic", "ffxiv_dx11", "escapefromtarkov", "rustclient",
+            "dayz_x64", "arkascended", "shootergame", "terraria", "stardew valley", "hollow_knight",
+            "hades", "hades2", "deadbydaylight-win64-shipping", "phasmophobia", "lethal company",
+            "among us", "fallguys_client_game", "bf2042", "bfv", "bf1", "tarkov", "pubg"
+        };
+
+        // DLLs altamente especificas de engines e SDKs de jogos (ausentes em Lightshot, navegadores, IDEs, Office, etc.)
+        private static readonly string[] GameEngineDllMarkers = new[]
+        {
+            "unityplayer.dll",
+            "gameassembly.dll",
+            "steam_api64.dll",
+            "steam_api.dll",
+            "eossdk-win64-shipping.dll",
+            "eossdk-win32-shipping.dll",
+            "fmod64.dll",
+            "fmodstudio.dll",
+            "fmod.dll",
+            "bink2w64.dll",
+            "binkw64.dll",
+            "nvngx_dlss.dll",
+            "amd_ags_x64.dll",
+            "physx3_x64.dll",
+            "physx_64.dll",
+            "cryrenderd3d11.dll",
+            "xaudio2_7.dll",
+            "dinput8.dll",
+            "galaxy64.dll",
+            "uplay_r1_loader64.dll",
+            "uplay_r2_loader64.dll"
+        };
+
+        // Se o processo carregar qualquer uma destas DLLs, trata-se de navegador/Electron/WebView2 (nao e jogo!)
+        private static readonly string[] NonGameFrameworkDlls = new[]
+        {
+            "chrome_elf.dll",
+            "webview2loader.dll",
+            "msedge_elf.dll",
+            "xul.dll"
         };
 
         private static readonly HashSet<string> IgnoredProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "explorer", "chrome", "msedge", "firefox", "brave", "opera", "vivaldi",
-            "code", "devenv", "rider64", "idea64", "windowsterminal", "powershell", "pwsh", "cmd",
-            "discord", "spotify", "telegram", "whatsapp", "slack", "teams", "zoom",
-            "vlc", "mpv", "wmplayer", "mpc-hc64", "obs64", "obs32", "streamlabs obs",
-            "voltpulse", "pcpowermonitor", "taskmgr", "searchhost", "shellexperiencehost",
-            "startmenuexperiencehost", "lockapp", "applicationframehost", "mstsc",
+            "explorer", "chrome", "msedge", "firefox", "brave", "opera", "vivaldi", "arc",
+            "code", "devenv", "rider64", "idea64", "antigravity", "cursor", "windsurf",
+            "windowsterminal", "powershell", "pwsh", "cmd", "conhost",
+            "discord", "spotify", "telegram", "whatsapp", "slack", "teams", "zoom", "notion",
+            "lightshot", "sharex", "greenshot", "snippingtool", "screenclippinghost", "snagit32", "gyazo",
+            "vlc", "mpv", "wmplayer", "mpc-hc64", "potplayermini64", "obs64", "obs32", "streamlabs obs",
+            "voltpulse", "pcpowermonitor", "taskmgr", "perfmon", "mmc", "regedit",
+            "searchhost", "shellexperiencehost", "startmenuexperiencehost", "lockapp", "applicationframehost", "mstsc",
             "steam", "steamwebhelper", "steamservice", "epicgameslauncher", "epicwebhelper",
             "riotclientservices", "riotclientux", "riotclientuxrender", "vgc", "vgtray",
             "eadesktop", "eabackgroundservice", "origin", "battle.net", "agent",
             "ubisoftconnect", "upc", "galaxyclient", "crashpad_handler", "crashreporter",
             "unitycrashhandler64", "easyanticheat", "easyanticheat_eos", "beservice",
-            "unrealcefsubprocess", "wallpaper32", "wallpaper64", "mumuplayer", "bluestacks"
+            "unrealcefsubprocess", "wallpaper32", "wallpaper64", "mumuplayer", "bluestacks",
+            "photoshop", "premiere", "afterfx", "illustrator", "blender", "davinci resolve",
+            "winword", "excel", "powerpnt", "outlook", "acrobat", "acrord32",
+            "radeonsoftware", "amdrsserv", "nvcontainer", "nvidia share", "geforce experience", "msiafterburner", "rtss"
         };
 
         private string _activeGameProcess;
@@ -50,9 +116,6 @@ namespace PcPowerMonitor
         [DllImport("user32.dll")]
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
-        [DllImport("user32.dll")]
-        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
 
@@ -64,12 +127,6 @@ namespace PcPowerMonitor
 
         private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT
-        {
-            public int Left, Top, Right, Bottom;
-        }
-
         public GameModeStatus Check(double? gpuLoadPercent, bool enabled)
         {
             if (!enabled)
@@ -80,7 +137,7 @@ namespace PcPowerMonitor
             }
 
             DateTime now = DateTime.UtcNow;
-            if ((now - _lastScanUtc).TotalSeconds < 3.5)
+            if ((now - _lastScanUtc).TotalSeconds < 4.0)
             {
                 return BuildStatus();
             }
@@ -89,13 +146,13 @@ namespace PcPowerMonitor
             string detectedProc = null;
             string detectedTitle = null;
 
-            // 1. Verifica janela ativa (tela cheia ou jogo em biblioteca)
-            CheckForeground(gpuLoadPercent, out detectedProc, out detectedTitle);
+            // 1. Verifica janela ativa com criterios rigorosos (zero falsos positivos)
+            CheckForeground(out detectedProc, out detectedTitle);
 
-            // 2. Se nao detectou na janela ativa (ex: Alt+Tab), verifica se ha processo rodando em pasta de biblioteca de jogos
+            // 2. Verifica processos com janela aberta em bibliotecas oficiais de jogos ou na whitelist de jogos
             if (detectedProc == null)
             {
-                CheckGameLibraryProcesses(out detectedProc, out detectedTitle);
+                CheckRunningGames(out detectedProc, out detectedTitle);
             }
 
             if (detectedProc != null)
@@ -106,7 +163,6 @@ namespace PcPowerMonitor
             }
             else if (_activeGameProcess != null)
             {
-                // Tolerancia de 15s para loadings/alt-tab
                 if ((now - _lastSeenUtc).TotalSeconds > 15.0)
                 {
                     _activeGameProcess = null;
@@ -129,7 +185,7 @@ namespace PcPowerMonitor
             };
         }
 
-        private void CheckForeground(double? gpuLoadPercent, out string procName, out string title)
+        private void CheckForeground(out string procName, out string title)
         {
             procName = null;
             title = null;
@@ -148,11 +204,25 @@ namespace PcPowerMonitor
                     if (string.IsNullOrWhiteSpace(name) || IgnoredProcesses.Contains(name)) return;
 
                     string exePath = TryGetProcessPath((int)pid);
-                    bool inGameLib = IsInGameLibrary(exePath);
-                    bool isFullscreen = IsWindowFullscreen(hwnd);
-                    bool heavyGpu = gpuLoadPercent.HasValue && gpuLoadPercent.Value >= 40.0;
+                    if (IsSystemOrUtilityPath(exePath)) return;
 
-                    if (inGameLib || isFullscreen || heavyGpu)
+                    // Minecraft Java Edition
+                    if (string.Equals(name, "javaw", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!string.IsNullOrWhiteSpace(proc.MainWindowTitle) &&
+                            proc.MainWindowTitle.IndexOf("Minecraft", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            procName = name;
+                            title = "Minecraft";
+                        }
+                        return;
+                    }
+
+                    bool isKnown = KnownGameExecutables.Contains(name);
+                    bool inGameLib = IsInGameLibrary(exePath);
+                    bool hasGameEngine = !isKnown && !inGameLib && HasGameEngineModules(proc);
+
+                    if (isKnown || inGameLib || hasGameEngine)
                     {
                         procName = name;
                         title = CleanGameTitle(proc.MainWindowTitle, exePath, name);
@@ -162,7 +232,7 @@ namespace PcPowerMonitor
             catch { }
         }
 
-        private void CheckGameLibraryProcesses(out string procName, out string title)
+        private void CheckRunningGames(out string procName, out string title)
         {
             procName = null;
             title = null;
@@ -179,7 +249,9 @@ namespace PcPowerMonitor
                         if (p.MainWindowHandle == IntPtr.Zero) continue;
 
                         string path = TryGetProcessPath(p.Id);
-                        if (IsInGameLibrary(path))
+                        if (IsSystemOrUtilityPath(path)) continue;
+
+                        if (KnownGameExecutables.Contains(name) || IsInGameLibrary(path))
                         {
                             procName = name;
                             title = CleanGameTitle(p.MainWindowTitle, path, name);
@@ -196,35 +268,63 @@ namespace PcPowerMonitor
             catch { }
         }
 
-        private static bool IsInGameLibrary(string exePath)
-        {
-            if (string.IsNullOrWhiteSpace(exePath)) return false;
-            string lower = exePath.ToLowerInvariant();
-            if (lower.Contains("launcher") || lower.Contains("redist") || lower.Contains("setup") || lower.Contains("unins"))
-                return false;
-            foreach (var marker in GameLibraryMarkers)
-            {
-                if (lower.Contains(marker)) return true;
-            }
-            return false;
-        }
-
-        private static bool IsWindowFullscreen(IntPtr hwnd)
+        private static bool HasGameEngineModules(Process proc)
         {
             try
             {
-                RECT r;
-                if (!GetWindowRect(hwnd, out r)) return false;
-                var screen = Screen.FromHandle(hwnd);
-                if (screen == null) return false;
-                int w = r.Right - r.Left;
-                int h = r.Bottom - r.Top;
-                return w >= screen.Bounds.Width - 4 && h >= screen.Bounds.Height - 4;
+                bool foundEngine = false;
+                foreach (ProcessModule mod in proc.Modules)
+                {
+                    string modName = (mod.ModuleName ?? "").ToLowerInvariant();
+                    foreach (var nonGame in NonGameFrameworkDlls)
+                    {
+                        if (modName == nonGame) return false; // Navegador / Electron / WebView2 -> nunca e jogo
+                    }
+                    if (!foundEngine)
+                    {
+                        foreach (var eng in GameEngineDllMarkers)
+                        {
+                            if (modName == eng) { foundEngine = true; break; }
+                        }
+                    }
+                }
+                return foundEngine;
             }
             catch
             {
                 return false;
             }
+        }
+
+        private static bool IsSystemOrUtilityPath(string exePath)
+        {
+            if (string.IsNullOrWhiteSpace(exePath)) return false;
+            string lower = exePath.ToLowerInvariant();
+            if (lower.StartsWith(@"c:\windows\")) return true;
+            if (lower.Contains(@"\skillbrains\lightshot\")) return true;
+            if (lower.Contains(@"\antigravity\")) return true;
+            if (lower.Contains(@"\microsoft vs code\")) return true;
+            if (lower.Contains(@"\google\chrome\")) return true;
+            if (lower.Contains(@"\microsoft\edge\")) return true;
+            if (lower.Contains(@"\mozilla firefox\")) return true;
+            if (lower.Contains(@"\voltpulse\")) return true;
+            return false;
+        }
+
+        private static bool IsInGameLibrary(string exePath)
+        {
+            if (string.IsNullOrWhiteSpace(exePath)) return false;
+            string lower = exePath.ToLowerInvariant();
+            if (lower.Contains("launcher") || lower.Contains("redist") || lower.Contains("setup") ||
+                lower.Contains("unins") || lower.Contains("crash") || lower.Contains("helper") ||
+                lower.Contains("updater") || lower.Contains("overlay") || lower.Contains("anticheat"))
+                return false;
+
+            foreach (var marker in GameLibraryMarkers)
+            {
+                if (lower.Contains(marker)) return true;
+            }
+            return false;
         }
 
         private static string TryGetProcessPath(int pid)

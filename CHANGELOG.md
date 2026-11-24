@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.1.1] - 2026-11-23
+### Corrigido & Melhorado
+- **Detecção cirúrgica de jogos (`GameDetector.cs` — zero falsos positivos)**: removidos os gatilhos genéricos por tela cheia / pico de GPU que ativavam o Modo Jogo em utilitários como *Lightshot* e apps Electron/WebView. Agora identifica jogos exclusivamente por bibliotecas oficiais (*Steam, Epic, Riot, Xbox, EA, Ubisoft, Battle.net, GOG, Rockstar, HoYoverse*), lista de executáveis de jogos conhecidos ou DLLs exclusivas de engines/SDKs de jogos (*UnityPlayer, steam_api, EOSSDK, fmod, dinput8, nvngx_dlss, amd_ags_x64, PhysX, bink2w64*), bloqueando explicitamente navegadores, IDEs, apps de captura e frameworks Chromium/WebView2.
+- **Filtro térmico mais preciso (`HardwareMonitorService.cs`)**: ignorados metadados que não são temperatura atual (`Distance to TjMax`, `Warning Temperature` e `Critical Temperature`), exibindo a temperatura real do NVMe/SSD e da CPU.
+- **Galeria com 4 screenshots reais** adicionada no topo do `README.md` e `README.pt-BR.md`.
+
 ## [4.1.0] - 2026-11-23
 ### Adicionado
 - **🛡️ Nova aba `Eco & Undervolt Seguro` (`SafePowerTuner.cs`)**:

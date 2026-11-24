@@ -723,6 +723,11 @@ namespace PcPowerMonitor
 
                     case SensorType.Temperature:
                         if (val <= -20 || val >= 150) break;
+                        // Ignora sensores de metadados que NAO sao temperatura atual (ex: Distance to TjMax, Warning/Critical Temperature)
+                        if (sensor.Name.IndexOf("Distance to TjMax", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            sensor.Name.IndexOf("Warning Temperature", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            sensor.Name.IndexOf("Critical Temperature", StringComparison.OrdinalIgnoreCase) >= 0)
+                            break;
                         var tRead = MakeReading(displayHw, hwCategory, sensor, "Temperatura", "°C", val);
                         snap.Temperatures.Add(tRead);
                         if (rootType == HardwareType.Cpu) cpuTemps.Add(tRead);
