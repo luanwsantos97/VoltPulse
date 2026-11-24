@@ -16,7 +16,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "3.1.0";
+        public const string AppVersion = "3.2.0";
 
         private readonly HardwareMonitorService _monitor;
         private readonly EnergyStorage _storage;

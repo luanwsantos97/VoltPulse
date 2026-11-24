@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Plataforma-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Plataforma" />
-  <img src="https://img.shields.io/badge/Vers%C3%A3o-3.1.0-10b981?style=for-the-badge" alt="Versão" />
+  <img src="https://img.shields.io/badge/Vers%C3%A3o-3.2.0-10b981?style=for-the-badge" alt="Versão" />
   <img src="https://img.shields.io/badge/Licen%C3%A7a-MIT-a78bfa?style=for-the-badge" alt="Licença" />
   <img src="https://img.shields.io/badge/Idiomas-8%20Idiomas-f59e0b?style=for-the-badge" alt="Idiomas" />
   <img src="https://img.shields.io/badge/PRs-Bem--vindos-38bdf8?style=for-the-badge" alt="PRs Bem-vindos" />
@@ -95,13 +95,15 @@ O jeito mais preciso (que já inclui ICMS, PIS/COFINS e bandeira tarifária) é 
 
 ## 🚀 Instalação (Usuários Finais)
 
-1. Baixe **`VoltPulse-v3.0.0-win-x64.zip`** na aba [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest).
-2. Extraia os arquivos em qualquer pasta do seu PC (ex.: `C:\Programas\VoltPulse\`).
-3. Execute **`VoltPulse.exe`** e aceite a solicitação de Administrador (UAC) para liberar a leitura de hardware.
-4. **Instalação Automática de Dependências**: na primeira abertura, se o driver **PawnIO** ou o **Edge WebView2 Runtime** não estiverem instalados, o VoltPulse abre um assistente de 1 clique e instala tudo automaticamente com os instaladores oficiais.
-5. Abra **Configurações** e informe a tarifa da sua conta de luz (ex.: `0,89` R\$/kWh).
+### Opção A — Instalador do Windows (Recomendado)
+1. Baixe **`VoltPulse-Setup-v3.2.0.exe`** na aba [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest).
+2. Execute o instalador — ele instala em `C:\Program Files (x86)\VoltPulse` (personalizável), registra no **Registro do Windows** (`HKLM\SOFTWARE\VoltPulse`, `App Paths` e **Aplicativos Instalados** com desinstalador oficial), cria atalhos no **Menu Iniciar e Área de Trabalho**, instala automaticamente o **PawnIO** e o **WebView2** caso faltem, e oferece a opção de **Iniciar com o Windows sem pop-up UAC**.
+3. Abra **Configurações** se quiser ajustar sua tarifa exata de energia (a moeda e tarifa média do país já são detectadas automaticamente pelo Windows).
 
-> **Dica:** Marque **"Iniciar junto com o Windows sem pop-up UAC"** nas Configurações para criar uma tarefa no Agendador de Tarefas (`RunLevel HIGHEST`), fazendo o VoltPulse abrir silenciosamente na bandeja no boot sem pedir confirmação toda vez.
+### Opção B — Versão Portátil (ZIP)
+1. Baixe **`VoltPulse-v3.2.0-win-x64.zip`** em [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest), extraia em qualquer pasta e execute **`VoltPulse.exe`**.
+
+> **Dica:** Depois de instalado, você pode abrir o VoltPulse de qualquer lugar pressionando `Win + R` → digite `voltpulse` → Enter!
 
 ---
 

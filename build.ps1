@@ -1,6 +1,7 @@
 ﻿param(
     [switch]$ReleaseZip,
-    [string]$Version = "3.0.0"
+    [switch]$Installer,
+    [string]$Version = "3.2.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -96,5 +97,30 @@ if ($ReleaseZip) {
     $zipPath = Join-Path $releaseDir "VoltPulse-v$Version-win-x64.zip"
     if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
     Compress-Archive -Path (Join-Path $distDir "*") -DestinationPath $zipPath -CompressionLevel Optimal
-    Write-Host "Pacote de Release gerado em: $zipPath"
+    Write-Host "Pacote Portátil ZIP gerado em: $zipPath"
+}
+
+if ($Installer) {
+    New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+    $isccPaths = @(
+        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        "C:\Program Files\Inno Setup 6\ISCC.exe",
+        "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+    )
+    $iscc = $isccPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $iscc) {
+        $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+        if ($cmd) { $iscc = $cmd.Source }
+    }
+    if (-not $iscc) {
+        throw "Inno Setup 6 (ISCC.exe) não encontrado. Instale com: winget install JRSoftware.InnoSetup"
+    }
+
+    $issFile = Join-Path $projDir "installer\VoltPulse.iss"
+    Write-Host "Compilando instalador Windows via Inno Setup ($iscc)..."
+    & $iscc "/DAppVersion=$Version" "/DDistDir=$distDir" "/DOutputDir=$releaseDir" $issFile
+    if ($LASTEXITCODE -ne 0) {
+        throw "Falha ao compilar o instalador Inno Setup (exit code $LASTEXITCODE)"
+    }
+    Write-Host "Instalador gerado em: $(Join-Path $releaseDir "VoltPulse-Setup-v$Version.exe")"
 }

@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-3.1.0-10b981?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-3.2.0-10b981?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/License-MIT-a78bfa?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/Languages-8%20Locales-f59e0b?style=for-the-badge" alt="Languages" />
   <img src="https://img.shields.io/badge/PRs-Welcome-38bdf8?style=for-the-badge" alt="PRs Welcome" />
@@ -87,13 +87,15 @@ $$\text{Wall Power (W)} = \frac{\text{CPU (W)} + \text{GPU (W)} + \text{Other Se
 
 ## 🚀 Installation (End Users)
 
-1. Download **`VoltPulse-v3.0.0-win-x64.zip`** from the [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest) page.
-2. Extract the folder anywhere on your PC (e.g., `C:\Tools\VoltPulse\`).
-3. Run **`VoltPulse.exe`** and approve the Administrator (UAC) prompt required for hardware sensor access.
-4. **First-Run Auto-Setup**: If **PawnIO** or **Edge WebView2 Runtime** is missing, VoltPulse automatically displays a 1-click setup window and installs them cleanly using official installers.
-5. Open **Settings** to set your local electricity rate (per kWh) and currency symbol.
+### Option A — Windows Installer (Recommended)
+1. Download **`VoltPulse-Setup-v3.2.0.exe`** from the [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest) page.
+2. Run the installer — it installs cleanly to `C:\Program Files (x86)\VoltPulse`, registers in **Windows Apps & Features** (`HKLM\SOFTWARE\VoltPulse` + `App Paths`), creates **Start Menu & Desktop shortcuts**, automatically installs **PawnIO** and **WebView2** if missing, and optionally enables UAC-free startup!
+3. Open **Settings** to fine-tune your local electricity rate (currency & average rate are auto-detected from Windows).
 
-> **Tip:** Enable **"Start with Windows"** in Settings to create a Windows Task Scheduler entry (`RunLevel: Highest`), allowing VoltPulse to launch silently in the system tray at login **without UAC pop-ups**.
+### Option B — Portable ZIP
+1. Download **`VoltPulse-v3.2.0-win-x64.zip`** from [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest), extract anywhere, and run **`VoltPulse.exe`**.
+
+> **Tip:** You can also launch VoltPulse anytime via `Win + R` → type `voltpulse` → Enter!
 
 ---
 

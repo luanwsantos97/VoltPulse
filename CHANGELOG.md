@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.2.0] - 2026-11-23
+### Adicionado
+- **Instalador Windows Profissional (`VoltPulse-Setup-v3.2.0.exe`)** via Inno Setup 6 (`installer/VoltPulse.iss`):
+  - Assistente multilíngue (PT-BR, EN, ES, FR, DE, IT, JA) com ícone próprio e licença MIT.
+  - Instalação padrão em `C:\Program Files (x86)\VoltPulse` (personalizável pelo usuário).
+  - Registro completo no Windows (`HKLM\SOFTWARE\VoltPulse`, `App Paths` para abrir via `Win + R → voltpulse`, e entrada oficial em **Apps & Recursos** com desinstalador limpo).
+  - Criação de atalhos no **Menu Iniciar** e **Área de Trabalho**.
+  - Instalação automática condicional das dependências (**PawnIO** + **Edge WebView2 Runtime**) durante o setup.
+  - Opção de configurar **Iniciar com o Windows sem UAC** diretamente na instalação (e remoção limpa na desinstalação).
+- Flag `-Installer` adicionada ao `build.ps1` e compilação automática do instalador `.exe` no GitHub Actions.
+
 ## [3.1.0] - 2026-11-23
 ### Adicionado
 - **Detecção automática de País, Moeda e Tarifa Inicial pelo Windows** (`RegionInfo.CurrentRegion`): suporta automaticamente `BRL`, `USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `MXN`, `ARS`, `JPY`, `CNY`, `INR`, `KRW`, `PLN` e qualquer outra moeda local, com 14 presets globais e botão **"Auto-detectar do Windows"** nas Configurações.

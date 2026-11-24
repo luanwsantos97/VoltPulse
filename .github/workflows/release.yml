@@ -24,7 +24,7 @@ jobs:
           if ($env:GITHUB_REF -like "refs/tags/v*") {
             $ver = $env:GITHUB_REF.Replace("refs/tags/v", "")
           } else {
-            $ver = "3.0.0-ci"
+            $ver = "3.2.0"
           }
           echo "version=$ver" >> $env:GITHUB_OUTPUT
 
@@ -34,20 +34,31 @@ jobs:
           node --check ui/i18n.js
           node --check ui/app.js
 
-      - name: Build VoltPulse & Generate Release ZIP
+      - name: Ensure Inno Setup 6 is installed
         shell: pwsh
         run: |
-          powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Version "${{ steps.meta.outputs.version }}"
+          if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
 
-      - name: Upload Build Artifact
+      - name: Build VoltPulse, Portable ZIP & Windows Installer (.exe)
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "${{ steps.meta.outputs.version }}"
+
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: VoltPulse-v${{ steps.meta.outputs.version }}-win-x64
-          path: releases/VoltPulse-v*.zip
+          path: |
+            releases/VoltPulse-Setup-v*.exe
+            releases/VoltPulse-v*.zip
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: releases/VoltPulse-v*.zip
+          files: |
+            releases/VoltPulse-Setup-v*.exe
+            releases/VoltPulse-v*.zip
