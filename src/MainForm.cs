@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
@@ -16,12 +17,14 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "3.2.1";
+        public const string AppVersion = "4.0.0";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
         private readonly EnergyStorage _storage;
         private readonly AppSettings _settings;
+        private readonly GameDetector _gameDetector = new GameDetector();
+        private readonly LocalApiServer _localApi = new LocalApiServer();
         private readonly CultureInfo _ptBr = new CultureInfo("pt-BR");
         private readonly JavaScriptSerializer _json = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
 
@@ -31,6 +34,9 @@ namespace PcPowerMonitor
         private bool _allowExit;
         private bool _webReady;
         private TelemetrySnapshot _lastSnapshot;
+        private GameModeStatus _lastGameMode = new GameModeStatus();
+        private bool _overlayAutoShownByGame;
+        private UpdateInfo _updateInfo = new UpdateInfo();
 
         // Alert cooldowns
         private readonly Dictionary<string, DateTime> _alertCooldowns = new Dictionary<string, DateTime>();
@@ -44,26 +50,61 @@ namespace PcPowerMonitor
         private NotifyIcon _trayIcon;
         private ToolStripMenuItem _trayPauseItem;
         private ToolStripMenuItem _trayOverlayItem;
+        private Icon _baseAppIcon;
+        private IntPtr _dynamicTrayIconHandle = IntPtr.Zero;
 
+        // Win32 Frameless Drag, Resize, Rounded Corners & Proper Maximize
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool DestroyIcon(IntPtr handle);
+
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMWCP_ROUND = 2;
+        private const int WM_NCLBUTTONDOWN = 0xA1;
+        private const int HTCAPTION = 0x2;
+        private const int WM_NCHITTEST = 0x84;
+        private const int WM_GETMINMAXINFO = 0x24;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT { public int X; public int Y; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MINMAXINFO
+        {
+            public POINT ptReserved;
+            public POINT ptMaxSize;
+            public POINT ptMaxPosition;
+            public POINT ptMinTrackSize;
+            public POINT ptMaxTrackSize;
+        }
 
         public MainForm(bool startMinimized)
         {
             _storage = new EnergyStorage();
             _settings = _storage.LoadSettings();
+            _baseAppIcon = LoadAppIcon();
 
             Text = "VoltPulse — PC Power, Voltage & Thermal Monitor";
+            FormBorderStyle = FormBorderStyle.None;
             Size = new Size(1260, 820);
-            MinimumSize = new Size(980, 660);
+            MinimumSize = new Size(960, 640);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.FromArgb(11, 16, 27);
             ForeColor = Color.FromArgb(241, 245, 249);
             Font = new Font("Segoe UI", 9.5f);
-            Icon = LoadAppIcon();
+            Icon = _baseAppIcon;
+            Padding = new Padding(4); // Margem sutil de 4px para permitir resize pelas bordas em janela frameless
 
-            ApplyTitleBarTheme(_settings.Theme != "light");
+            ApplyWindowChrome(_settings.Theme != "light");
 
             BuildWebHost();
             SetupTray();
@@ -71,13 +112,23 @@ namespace PcPowerMonitor
             if (_settings.ShowOverlay)
                 SetOverlayVisible(true, false);
 
+            if (_settings.LocalApiEnabled)
+                _localApi.Start(_settings.LocalApiPort);
+
             _pollTimer = new Timer { Interval = Math.Max(1000, _settings.PollIntervalSeconds * 1000) };
             _pollTimer.Tick += (s, e) => PollAndPush();
+
+            Resize += (s, e) =>
+            {
+                Padding = WindowState == FormWindowState.Maximized ? new Padding(0) : new Padding(4);
+                if (_webReady) PollAndPush(true);
+            };
 
             Shown += (s, e) =>
             {
                 InitializeWebViewAsync();
                 InitializeHardwareAsync();
+                if (_settings.AutoCheckUpdates) CheckUpdatesAsync(false);
             };
 
             if (startMinimized)
@@ -88,64 +139,70 @@ namespace PcPowerMonitor
                 {
                     Hide();
                     InitializeHardwareAsync();
+                    if (_settings.AutoCheckUpdates) CheckUpdatesAsync(false);
                 };
             }
         }
 
-        private void PushInitProgress(int percent, string message)
+        protected override void WndProc(ref Message m)
         {
-            if (InvokeRequired)
+            if (m.Msg == WM_GETMINMAXINFO)
             {
-                try { BeginInvoke(new Action<int, string>(PushInitProgress), percent, message); } catch { }
+                try
+                {
+                    var mmi = (MINMAXINFO)Marshal.PtrToStructure(m.LParam, typeof(MINMAXINFO));
+                    var scr = Screen.FromHandle(Handle);
+                    var wa = scr.WorkingArea;
+                    var bounds = scr.Bounds;
+                    mmi.ptMaxPosition.X = Math.Abs(wa.Left - bounds.Left);
+                    mmi.ptMaxPosition.Y = Math.Abs(wa.Top - bounds.Top);
+                    mmi.ptMaxSize.X = wa.Width;
+                    mmi.ptMaxSize.Y = wa.Height;
+                    mmi.ptMinTrackSize.X = MinimumSize.Width;
+                    mmi.ptMinTrackSize.Y = MinimumSize.Height;
+                    Marshal.StructureToPtr(mmi, m.LParam, true);
+                    m.Result = IntPtr.Zero;
+                    return;
+                }
+                catch { }
+            }
+
+            if (m.Msg == WM_NCHITTEST && WindowState == FormWindowState.Normal)
+            {
+                base.WndProc(ref m);
+                int grip = 6;
+                Point pt = PointToClient(new Point((int)(m.LParam.ToInt64() & 0xFFFF), (int)((m.LParam.ToInt64() >> 16) & 0xFFFF)));
+                bool left = pt.X <= grip;
+                bool right = pt.X >= ClientSize.Width - grip;
+                bool top = pt.Y <= grip;
+                bool bottom = pt.Y >= ClientSize.Height - grip;
+
+                if (top && left) m.Result = (IntPtr)13;       // HTTOPLEFT
+                else if (top && right) m.Result = (IntPtr)14; // HTTOPRIGHT
+                else if (bottom && left) m.Result = (IntPtr)16;  // HTBOTTOMLEFT
+                else if (bottom && right) m.Result = (IntPtr)17; // HTBOTTOMRIGHT
+                else if (left) m.Result = (IntPtr)10;         // HTLEFT
+                else if (right) m.Result = (IntPtr)11;        // HTRIGHT
+                else if (top) m.Result = (IntPtr)12;          // HTTOP
+                else if (bottom) m.Result = (IntPtr)15;       // HTBOTTOM
                 return;
             }
-            if (_webReady && _webView != null && _webView.CoreWebView2 != null)
-            {
-                try
-                {
-                    var obj = new Dictionary<string, object>
-                    {
-                        { "Type", "initProgress" },
-                        { "Percent", percent },
-                        { "Message", message }
-                    };
-                    _webView.CoreWebView2.PostWebMessageAsJson(_json.Serialize(obj));
-                }
-                catch { }
-            }
+
+            base.WndProc(ref m);
         }
 
-        private void InitializeHardwareAsync()
-        {
-            if (_monitor != null || _monitorInitializing) return;
-            _monitorInitializing = true;
-
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                var svc = new HardwareMonitorService((pct, msg) => PushInitProgress(pct, msg));
-                try
-                {
-                    BeginInvoke(new Action(() =>
-                    {
-                        _monitor = svc;
-                        _monitorInitializing = false;
-                        _lastTickUtc = DateTime.UtcNow;
-                        _pollTimer.Start();
-                        PollAndPush(true);
-                    }));
-                }
-                catch { }
-            });
-        }
-
-        private void ApplyTitleBarTheme(bool dark)
+        private void ApplyWindowChrome(bool dark)
         {
             try
             {
                 int val = dark ? 1 : 0;
                 DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref val, sizeof(int));
+                int corner = DWMWCP_ROUND;
+                DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
             }
             catch { }
+
+            BackColor = dark ? Color.FromArgb(11, 16, 27) : Color.FromArgb(226, 232, 240);
         }
 
         private void BuildWebHost()
@@ -225,6 +282,96 @@ namespace PcPowerMonitor
             }
         }
 
+        private void PushInitProgress(int percent, string message)
+        {
+            if (InvokeRequired)
+            {
+                try { BeginInvoke(new Action<int, string>(PushInitProgress), percent, message); } catch { }
+                return;
+            }
+            if (_webReady && _webView != null && _webView.CoreWebView2 != null)
+            {
+                try
+                {
+                    var obj = new Dictionary<string, object>
+                    {
+                        { "Type", "initProgress" },
+                        { "Percent", percent },
+                        { "Message", message }
+                    };
+                    _webView.CoreWebView2.PostWebMessageAsJson(_json.Serialize(obj));
+                }
+                catch { }
+            }
+        }
+
+        private void InitializeHardwareAsync()
+        {
+            if (_monitor != null || _monitorInitializing) return;
+            _monitorInitializing = true;
+
+            Task.Run(() =>
+            {
+                var svc = new HardwareMonitorService((pct, msg) => PushInitProgress(pct, msg));
+                try
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        _monitor = svc;
+                        _monitorInitializing = false;
+                        _lastTickUtc = DateTime.UtcNow;
+                        _pollTimer.Start();
+                        PollAndPush(true);
+                    }));
+                }
+                catch { }
+            });
+        }
+
+        private async void CheckUpdatesAsync(bool notifyUpToDate)
+        {
+            var info = await UpdateChecker.CheckLatestAsync(AppVersion);
+            _updateInfo = info;
+            if (!IsDisposed)
+            {
+                try
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        PollAndPush(true);
+                        if (notifyUpToDate && !info.UpdateAvailable && _webReady && _webView != null && _webView.CoreWebView2 != null)
+                        {
+                            var toastMsg = new Dictionary<string, object>
+                            {
+                                { "Type", "toast" },
+                                { "Message", "✓ VoltPulse v" + AppVersion + " já está atualizado!" }
+                            };
+                            _webView.CoreWebView2.PostWebMessageAsJson(_json.Serialize(toastMsg));
+                        }
+                    }));
+                }
+                catch { }
+            }
+        }
+
+        private async void InstallLatestUpdateAsync()
+        {
+            if (_updateInfo == null || !_updateInfo.UpdateAvailable) return;
+            if (!string.IsNullOrWhiteSpace(_updateInfo.DownloadUrl))
+            {
+                bool ok = await UpdateChecker.DownloadAndRunInstallerAsync(_updateInfo.DownloadUrl);
+                if (ok)
+                {
+                    ExitApplication();
+                    return;
+                }
+            }
+            if (!string.IsNullOrWhiteSpace(_updateInfo.ReleasePageUrl))
+            {
+                try { Process.Start(new ProcessStartInfo(_updateInfo.ReleasePageUrl) { UseShellExecute = true }); } catch { }
+            }
+        }
+
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             try
@@ -239,6 +386,33 @@ namespace PcPowerMonitor
                     case "ready":
                         _webReady = true;
                         PollAndPush(true);
+                        break;
+
+                    case "winDrag":
+                        if (WindowState == FormWindowState.Maximized)
+                        {
+                            // Restaura suavemente antes de arrastar
+                            var cursor = Cursor.Position;
+                            double ratio = (double)cursor.X / Math.Max(1, Width);
+                            WindowState = FormWindowState.Normal;
+                            Left = (int)(cursor.X - Width * ratio);
+                            Top = Math.Max(0, cursor.Y - 18);
+                        }
+                        ReleaseCapture();
+                        SendMessage(Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+                        break;
+
+                    case "winMinimize":
+                        WindowState = FormWindowState.Minimized;
+                        break;
+
+                    case "winMaximize":
+                        WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+                        PollAndPush(true);
+                        break;
+
+                    case "winClose":
+                        Close();
                         break;
 
                     case "resetLocale":
@@ -256,19 +430,28 @@ namespace PcPowerMonitor
                         break;
 
                     case "toggleOverlay":
+                        _overlayAutoShownByGame = false;
                         SetOverlayVisible(!_settings.ShowOverlay, true);
                         PollAndPush(true);
                         break;
 
                     case "startSession":
                         string sName = msg.ContainsKey("name") ? Convert.ToString(msg["name"]) : "Sessão";
-                        _storage.StartSession(sName);
+                        _storage.StartSession(sName, false);
                         PollAndPush(true);
                         break;
 
                     case "stopSession":
                         _storage.StopSession();
                         PollAndPush(true);
+                        break;
+
+                    case "checkUpdates":
+                        CheckUpdatesAsync(true);
+                        break;
+
+                    case "installUpdate":
+                        InstallLatestUpdateAsync();
                         break;
 
                     case "openDataDir":
@@ -333,17 +516,31 @@ namespace PcPowerMonitor
             _settings.TempCriticalC = ReadDouble(sDict, "TempCriticalC", _settings.TempCriticalC, _settings.TempWarningC + 5.0, 110.0);
             _settings.MinimizeToTrayOnClose = ReadBool(sDict, "MinimizeToTrayOnClose", _settings.MinimizeToTrayOnClose);
             _settings.StartWithWindows = ReadBool(sDict, "StartWithWindows", _settings.StartWithWindows);
-            _settings.Theme = ReadString(sDict, "Theme", _settings.Theme) == "light" ? "light" : "dark";
+            _settings.Theme = AppSettings.NormalizeTheme(ReadString(sDict, "Theme", _settings.Theme));
             _settings.Language = AppSettings.NormalizeLanguage(ReadString(sDict, "Language", _settings.Language));
             _settings.EnableAlerts = ReadBool(sDict, "EnableAlerts", _settings.EnableAlerts);
             _settings.MonthlyBudgetAlert = ReadDouble(sDict, "MonthlyBudgetAlert", _settings.MonthlyBudgetAlert, 0.0, 1000000.0);
             bool wantOverlay = ReadBool(sDict, "ShowOverlay", _settings.ShowOverlay);
 
+            // v4.0 settings
+            _settings.AutoGameMode = ReadBool(sDict, "AutoGameMode", _settings.AutoGameMode);
+            _settings.AutoOverlayInGame = ReadBool(sDict, "AutoOverlayInGame", _settings.AutoOverlayInGame);
+            _settings.QuietStart = ReadBool(sDict, "QuietStart", _settings.QuietStart);
+            _settings.TrayIconMode = AppSettings.NormalizeTrayMode(ReadString(sDict, "TrayIconMode", _settings.TrayIconMode));
+            _settings.LocalApiEnabled = ReadBool(sDict, "LocalApiEnabled", _settings.LocalApiEnabled);
+            _settings.LocalApiPort = (int)ReadDouble(sDict, "LocalApiPort", _settings.LocalApiPort, 1024, 65535);
+            _settings.AutoCheckUpdates = ReadBool(sDict, "AutoCheckUpdates", _settings.AutoCheckUpdates);
+
             SetOverlayVisible(wantOverlay, false);
+
+            if (_settings.LocalApiEnabled)
+                _localApi.Start(_settings.LocalApiPort);
+            else
+                _localApi.Stop();
 
             _storage.SaveSettings(_settings);
             _pollTimer.Interval = Math.Max(1000, _settings.PollIntervalSeconds * 1000);
-            ApplyTitleBarTheme(_settings.Theme != "light");
+            ApplyWindowChrome(_settings.Theme != "light");
 
             PollAndPush(true);
         }
@@ -359,7 +556,7 @@ namespace PcPowerMonitor
                         _settings.OverlayX,
                         _settings.OverlayY,
                         RestoreFromTray,
-                        () => { SetOverlayVisible(false, true); PollAndPush(true); },
+                        () => { _overlayAutoShownByGame = false; SetOverlayVisible(false, true); PollAndPush(true); },
                         (x, y) =>
                         {
                             _settings.OverlayX = x;
@@ -453,6 +650,9 @@ namespace PcPowerMonitor
             var snap = _monitor.Capture(_settings, _paused);
             _lastSnapshot = snap;
 
+            // Modo Jogo Automatico
+            HandleAutoGameMode(snap);
+
             if (!_paused && elapsed > 0.2)
             {
                 _storage.RecordSample(DateTime.Now, snap.EstimatedWallWatts, elapsed, snap.CpuTempC, snap.GpuTempC);
@@ -461,16 +661,19 @@ namespace PcPowerMonitor
             var summary = _storage.GetSummary(_settings.TariffPerKwh);
             var session = _storage.GetSessionSnapshot();
 
-            // Atualiza Overlay se visível
+            // Atualiza Overlay se visivel
             if (_overlayForm != null && !_overlayForm.IsDisposed && _overlayForm.Visible)
             {
                 _overlayForm.UpdateMetrics(snap, _settings);
             }
 
-            // Verifica alertas nativos
+            // Atualiza icone dinamico na bandeja (logo / cpu_temp / watts)
+            UpdateDynamicTrayIcon(snap);
+
+            // Verifica alertas nativos (silencia alertas nao-criticos em Modo Jogo Quieto)
             if (_settings.EnableAlerts && !_paused)
             {
-                CheckAndNotifyAlerts(snap, summary);
+                CheckAndNotifyAlerts(snap, summary, _lastGameMode.QuietActive);
             }
 
             // Tooltip da bandeja
@@ -481,32 +684,140 @@ namespace PcPowerMonitor
             if (tip.Length > 63) tip = tip.Substring(0, 63);
             if (_trayIcon != null) _trayIcon.Text = tip;
 
-            if (_webReady && _webView != null && _webView.CoreWebView2 != null)
+            var payload = new DashboardPayload
             {
-                var payload = new DashboardPayload
-                {
-                    Type = "telemetry",
-                    Telemetry = snap,
-                    Summary = summary,
-                    Session = session,
-                    Settings = _settings,
-                    DataDirectory = _storage.DataDirectory,
-                    AppVersion = AppVersion
-                };
+                Type = "telemetry",
+                Telemetry = snap,
+                Summary = summary,
+                Session = session,
+                GameMode = _lastGameMode,
+                Update = _updateInfo,
+                Settings = _settings,
+                IsMaximized = WindowState == FormWindowState.Maximized,
+                LocalApiRunning = _localApi.IsRunning,
+                DataDirectory = _storage.DataDirectory,
+                AppVersion = AppVersion
+            };
 
-                try
+            string jsonStr = null;
+            try { jsonStr = _json.Serialize(payload); } catch { }
+
+            if (!string.IsNullOrEmpty(jsonStr))
+            {
+                if (_localApi.IsRunning)
+                    _localApi.UpdatePayloadJson(jsonStr);
+
+                if (_webReady && _webView != null && _webView.CoreWebView2 != null)
                 {
-                    string jsonStr = _json.Serialize(payload);
-                    _webView.CoreWebView2.PostWebMessageAsJson(jsonStr);
+                    try { _webView.CoreWebView2.PostWebMessageAsJson(jsonStr); } catch { }
                 }
-                catch { }
             }
         }
 
-        private void CheckAndNotifyAlerts(TelemetrySnapshot snap, EnergySummary summary)
+        private void HandleAutoGameMode(TelemetrySnapshot snap)
+        {
+            var game = _gameDetector.Check(snap.GpuLoadPercent, _settings.AutoGameMode);
+            bool wasActive = _lastGameMode.Active;
+            _lastGameMode = game;
+
+            if (game.Active && !wasActive)
+            {
+                var curSess = _storage.GetSessionSnapshot();
+                if (!curSess.Active)
+                {
+                    _storage.StartSession("🎮 " + game.GameName, true);
+                }
+
+                if (_settings.AutoOverlayInGame && !_settings.ShowOverlay)
+                {
+                    _overlayAutoShownByGame = true;
+                    SetOverlayVisible(true, false);
+                }
+            }
+            else if (!game.Active && wasActive)
+            {
+                var curSess = _storage.GetSessionSnapshot();
+                if (curSess.Active && curSess.AutoStarted)
+                {
+                    _storage.StopSession();
+                }
+
+                if (_overlayAutoShownByGame)
+                {
+                    _overlayAutoShownByGame = false;
+                    SetOverlayVisible(false, false);
+                }
+            }
+        }
+
+        private void UpdateDynamicTrayIcon(TelemetrySnapshot snap)
         {
             if (_trayIcon == null) return;
-            bool isEn = _settings.Language == "en-US";
+
+            if (_settings.TrayIconMode == "logo")
+            {
+                if (_trayIcon.Icon != _baseAppIcon)
+                    _trayIcon.Icon = _baseAppIcon;
+                return;
+            }
+
+            string text = "--";
+            Color bg = Color.FromArgb(15, 23, 42);
+            Color fg = Color.FromArgb(56, 189, 248);
+
+            if (_settings.TrayIconMode == "cpu_temp")
+            {
+                double? t = snap.CpuTempC ?? snap.GpuTempC;
+                if (t.HasValue)
+                {
+                    text = ((int)Math.Round(t.Value)).ToString();
+                    fg = t.Value >= _settings.TempCriticalC ? Color.FromArgb(248, 113, 113)
+                       : (t.Value >= _settings.TempWarningC ? Color.FromArgb(251, 191, 36) : Color.FromArgb(52, 211, 153));
+                }
+            }
+            else if (_settings.TrayIconMode == "watts")
+            {
+                int w = (int)Math.Round(snap.EstimatedWallWatts);
+                text = w >= 1000 ? "1k" : w.ToString();
+                fg = w >= 350 ? Color.FromArgb(251, 191, 36) : Color.FromArgb(56, 189, 248);
+            }
+
+            try
+            {
+                using (var bmp = new Bitmap(32, 32))
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                    using (var b = new SolidBrush(bg))
+                        g.FillRectangle(b, 0, 0, 32, 32);
+                    using (var pen = new Pen(fg, 2f))
+                        g.DrawRectangle(pen, 1, 1, 29, 29);
+
+                    float fSize = text.Length >= 3 ? 11.5f : 15f;
+                    using (var font = new Font("Segoe UI", fSize, FontStyle.Bold, GraphicsUnit.Pixel))
+                    using (var brush = new SolidBrush(fg))
+                    {
+                        var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                        g.DrawString(text, font, brush, new RectangleF(0, 1, 32, 31), sf);
+                    }
+
+                    IntPtr hIcon = bmp.GetHicon();
+                    var newIcon = (Icon)Icon.FromHandle(hIcon).Clone();
+                    DestroyIcon(hIcon);
+
+                    var old = _trayIcon.Icon;
+                    _trayIcon.Icon = newIcon;
+                    if (old != null && old != _baseAppIcon) old.Dispose();
+                }
+            }
+            catch { }
+        }
+
+        private void CheckAndNotifyAlerts(TelemetrySnapshot snap, EnergySummary summary, bool quietGameMode)
+        {
+            if (_trayIcon == null) return;
+            bool isEn = _settings.Language != "pt-BR";
 
             if (snap.CpuTempC.HasValue && snap.CpuTempC.Value >= _settings.TempCriticalC)
             {
@@ -542,7 +853,8 @@ namespace PcPowerMonitor
                     ToolTipIcon.Warning);
             }
 
-            if (_settings.MonthlyBudgetAlert > 0 && summary.MonthCost >= _settings.MonthlyBudgetAlert)
+            // Meta mensal fica silenciada enquanto joga (Modo Quieto)
+            if (!quietGameMode && _settings.MonthlyBudgetAlert > 0 && summary.MonthCost >= _settings.MonthlyBudgetAlert)
             {
                 string todayKey = DateTime.Today.ToString("yyyy-MM-dd");
                 if (_budgetAlertDay != todayKey)
@@ -574,6 +886,7 @@ namespace PcPowerMonitor
             var openItem = new ToolStripMenuItem("Abrir VoltPulse", null, (s, e) => RestoreFromTray());
             _trayOverlayItem = new ToolStripMenuItem("Mini Widget Flutuante (Overlay)", null, (s, e) =>
             {
+                _overlayAutoShownByGame = false;
                 SetOverlayVisible(!_settings.ShowOverlay, true);
                 PollAndPush(true);
             }) { Checked = _settings.ShowOverlay };
@@ -588,7 +901,7 @@ namespace PcPowerMonitor
 
             _trayIcon = new NotifyIcon
             {
-                Icon = LoadAppIcon(),
+                Icon = _baseAppIcon,
                 Text = "VoltPulse — Monitor de Energia & Hardware",
                 ContextMenuStrip = menu,
                 Visible = true
@@ -610,12 +923,15 @@ namespace PcPowerMonitor
             ShowInTaskbar = true;
             WindowState = FormWindowState.Normal;
             Activate();
+            if (_webView == null || _webView.CoreWebView2 == null)
+                InitializeWebViewAsync();
         }
 
         private void ExitApplication()
         {
             _allowExit = true;
             _pollTimer.Stop();
+            _localApi.Stop();
             _storage.Flush();
             if (_overlayForm != null && !_overlayForm.IsDisposed)
             {
@@ -638,10 +954,14 @@ namespace PcPowerMonitor
                 e.Cancel = true;
                 Hide();
                 ShowInTaskbar = false;
-                _trayIcon.ShowBalloonTip(2000, "VoltPulse", "Continuando o monitoramento na bandeja do sistema.", ToolTipIcon.Info);
+                if (!_settings.QuietStart)
+                {
+                    _trayIcon.ShowBalloonTip(2000, "VoltPulse", "Continuando o monitoramento na bandeja do sistema.", ToolTipIcon.Info);
+                }
                 return;
             }
 
+            _localApi.Stop();
             _storage.Flush();
             if (_monitor != null) _monitor.Dispose();
             if (_overlayForm != null && !_overlayForm.IsDisposed) _overlayForm.Close();

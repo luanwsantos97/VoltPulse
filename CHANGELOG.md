@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.0.0] - 2026-11-23
+### Adicionado
+- **Janela Frameless com Barra de Título 100% do Tema**: botões Minimizar / Maximizar / Fechar estilizados, arraste nativo, duplo clique para maximizar, cantos arredondados no Windows 11 e redimensionamento em todas as bordas.
+- **6 Temas Visuais**: `Dark Slate`, `OLED Midnight`, `Cyber Neon`, `Forest Emerald`, `Sunset Carbon` e `Clean Light`, com seletor visual nas Configurações.
+- **🎮 Modo Jogo Automático (`GameDetector.cs`) & Segundo Plano Quieto**: detecta automaticamente jogos (bibliotecas Steam, Epic, Riot, Xbox, Battle.net, GOG, Ubisoft, EA ou tela cheia/uso de GPU), inicia/encerra a medição de sessão automaticamente, ativa modo quieto e opcionalmente exibe o Overlay durante o jogo.
+- **🔍 Top Processos (`ProcessMonitor.cs`)**: lista ao vivo os 8 processos que mais consomem CPU e RAM.
+- **🔋 Saúde da Bateria para Notebooks**: exibe carga %, taxa W, tensão, capacidade de fábrica vs atual e desgaste (auto-oculto em PCs desktop).
+- **🌡️ Ícone Dinâmico na Bandeja**: escolha entre Logo VoltPulse, Temperatura CPU (°C) ao vivo ou Potência (W) ao vivo.
+- **🔄 Auto-Updater integrado (`UpdateChecker.cs`)**: verifica novas releases em `luanwsantos97/VoltPulse` e baixa/executa o novo instalador em 1 clique.
+- **🔌 API JSON Local opcional (`LocalApiServer.cs`)**: `http://127.0.0.1:48731/api/telemetry` para Home Assistant, Stream Deck e Rainmeter.
+### Corrigido
+- **Fix definitivo de layout na barra inferior**: largura travada na sidebar e grid fixo nos botões de ação — trocar entre qualquer um dos 8 idiomas nunca mais causa redimensionamento.
+
 ## [3.2.1] - 2026-11-23
 ### Corrigido & Melhorado
 - **Correção crítica de inicialização na UI (`ui/app.js`)**: corrigido erro `ReferenceError` na ordem de declaração do helper `$` que impedia a dashboard de sair de *"Detectando componentes do PC..."*.

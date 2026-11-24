@@ -220,23 +220,71 @@
     });
   }
 
+  const THEMES = ["dark", "midnight", "cyberpunk", "emerald", "amber", "light"];
+
+  // Controles da Barra de Titulo Customizada (Frameless)
+  if ($("btnWinMin")) $("btnWinMin").addEventListener("click", () => sendHost({ action: "winMinimize" }));
+  if ($("btnWinMax")) $("btnWinMax").addEventListener("click", () => sendHost({ action: "winMaximize" }));
+  if ($("btnWinClose")) $("btnWinClose").addEventListener("click", () => sendHost({ action: "winClose" }));
+  if ($("titlebarDrag")) {
+    $("titlebarDrag").addEventListener("mousedown", (ev) => {
+      if (ev.button !== 0) return;
+      if (ev.target && ev.target.closest && ev.target.closest("button")) return;
+      if (ev.detail === 2) {
+        sendHost({ action: "winMaximize" });
+      } else {
+        sendHost({ action: "winDrag" });
+      }
+    });
+  }
+  if ($("titlebarUpdateBtn")) {
+    $("titlebarUpdateBtn").addEventListener("click", () => {
+      showToast("Baixando instalador da nova versão...");
+      sendHost({ action: "installUpdate" });
+    });
+  }
+  if ($("btnCheckUpdates")) {
+    $("btnCheckUpdates").addEventListener("click", () => {
+      showToast("Verificando atualizações no GitHub...");
+      sendHost({ action: "checkUpdates" });
+    });
+  }
+
+  // Theme picker swatches
+  document.querySelectorAll(".theme-swatch").forEach((sw) => {
+    sw.addEventListener("click", () => {
+      const th = sw.dataset.themeVal;
+      applyTheme(th);
+      if ($("setTheme")) $("setTheme").value = th;
+      if (state.payload && state.payload.Settings) {
+        state.payload.Settings.Theme = th;
+        sendHost({ action: "saveSettings", settings: state.payload.Settings });
+      }
+      redrawAllCharts();
+    });
+  });
+
   $("btnThemeToggle").addEventListener("click", () => {
     const cur = document.documentElement.getAttribute("data-theme") || "dark";
-    const next = cur === "dark" ? "light" : "dark";
+    const idx = THEMES.indexOf(cur);
+    const next = THEMES[(idx + 1) % THEMES.length];
     applyTheme(next);
     if (state.payload && state.payload.Settings) {
       state.payload.Settings.Theme = next;
-      $("setTheme").value = next;
+      if ($("setTheme")) $("setTheme").value = next;
       sendHost({ action: "saveSettings", settings: state.payload.Settings });
     }
     redrawAllCharts();
-    hideSplash();
   });
 
   function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : "dark");
+    const safe = THEMES.includes(theme) ? theme : "dark";
+    document.documentElement.setAttribute("data-theme", safe);
+    document.querySelectorAll(".theme-swatch").forEach((sw) => {
+      sw.classList.toggle("active", sw.dataset.themeVal === safe);
+    });
     const icon = $("themeIcon");
-    if (theme === "light") {
+    if (safe === "light") {
       icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
     } else {
       icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
@@ -343,11 +391,18 @@
       TempCriticalC: parseFloat($("setTempCrit").value) || 88,
       MinimizeToTrayOnClose: $("setMinTray").checked,
       StartWithWindows: $("setStartWin").checked,
-      Theme: $("setTheme").value === "light" ? "light" : "dark",
+      Theme: ($("setTheme") && $("setTheme").value) ? $("setTheme").value : "dark",
       Language: ($("setLang") && $("setLang").value) ? $("setLang").value : state.lang,
       EnableAlerts: $("setAlerts") ? $("setAlerts").checked : true,
       MonthlyBudgetAlert: $("setBudget") ? (parseFloat($("setBudget").value) || 0) : 0,
-      ShowOverlay: $("setShowOverlay") ? $("setShowOverlay").checked : false
+      ShowOverlay: $("setShowOverlay") ? $("setShowOverlay").checked : false,
+      AutoGameMode: $("setAutoGame") ? $("setAutoGame").checked : true,
+      AutoOverlayInGame: $("setAutoOverlayGame") ? $("setAutoOverlayGame").checked : false,
+      QuietStart: $("setQuietStart") ? $("setQuietStart").checked : true,
+      TrayIconMode: ($("setTrayMode") && $("setTrayMode").value) ? $("setTrayMode").value : "logo",
+      LocalApiEnabled: $("setLocalApi") ? $("setLocalApi").checked : false,
+      LocalApiPort: $("setApiPort") ? (parseInt($("setApiPort").value, 10) || 48731) : 48731,
+      AutoCheckUpdates: $("setAutoUpdates") ? $("setAutoUpdates").checked : true
     };
     applyTheme(newSettings.Theme);
     applyLanguage(newSettings.Language);
@@ -392,6 +447,38 @@
       if ($("setAlerts")) $("setAlerts").checked = cfg.EnableAlerts !== false;
       if ($("setBudget")) $("setBudget").value = cfg.MonthlyBudgetAlert || 0;
       if ($("setShowOverlay")) $("setShowOverlay").checked = !!cfg.ShowOverlay;
+      if ($("setAutoGame")) $("setAutoGame").checked = cfg.AutoGameMode !== false;
+      if ($("setAutoOverlayGame")) $("setAutoOverlayGame").checked = !!cfg.AutoOverlayInGame;
+      if ($("setQuietStart")) $("setQuietStart").checked = cfg.QuietStart !== false;
+      if ($("setTrayMode")) $("setTrayMode").value = cfg.TrayIconMode || "logo";
+      if ($("setLocalApi")) $("setLocalApi").checked = !!cfg.LocalApiEnabled;
+      if ($("setApiPort")) $("setApiPort").value = cfg.LocalApiPort || 48731;
+      if ($("setAutoUpdates")) $("setAutoUpdates").checked = cfg.AutoCheckUpdates !== false;
+    }
+
+    if ($("apiUrlHint")) {
+      const port = cfg.LocalApiPort || 48731;
+      $("apiUrlHint").textContent = `http://127.0.0.1:${port}/api/telemetry` + (payload.LocalApiRunning ? " (Online)" : "");
+    }
+    if ($("titlebarVer") && payload.AppVersion) {
+      $("titlebarVer").textContent = "v" + payload.AppVersion;
+    }
+    if ($("titlebarGameBadge")) {
+      const gm = payload.GameMode;
+      const active = !!(gm && gm.Active);
+      $("titlebarGameBadge").classList.toggle("hidden", !active);
+      if (active) $("titlebarGameBadge").textContent = `🎮 ${gm.GameName || "Modo Jogo"}`;
+    }
+    if ($("titlebarUpdateBtn")) {
+      const upd = payload.Update;
+      const hasUpd = !!(upd && upd.UpdateAvailable);
+      $("titlebarUpdateBtn").classList.toggle("hidden", !hasUpd);
+      if (hasUpd) $("titlebarUpdateBtn").textContent = `↑ Atualizar para v${upd.LatestVersion}`;
+    }
+    if ($("winMaxIcon")) {
+      $("winMaxIcon").innerHTML = payload.IsMaximized
+        ? '<rect x="1.5" y="3.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.2"/><polyline points="3.5,3.5 3.5,1.5 10.5,1.5 10.5,8.5 8.5,8.5" fill="none" stroke="currentColor" stroke-width="1.2"/>'
+        : '<rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.3"/>';
     }
 
     if ($("btnOverlayToggle")) {
@@ -517,12 +604,14 @@
 
     // Overview Power Sensors table
     renderOverviewPower(t);
+    renderBattery(t);
     renderSession(payload);
     renderHistoryTable(s, cfg);
     renderThermals(payload);
     renderVoltages(payload);
     renderDisks(payload);
     renderNetwork(t);
+    renderTopProcesses(t);
     renderSystem(payload);
     updateSimulator();
 
@@ -965,6 +1054,52 @@
     state.hoverCharts[canvasId] = { type: "hourly", bars: barsMeta };
   }
 
+  function renderBattery(t) {
+    const card = $("batteryCard");
+    if (!card) return;
+    const b = t.Battery;
+    if (!b || !b.Present) {
+      card.classList.add("hidden");
+      return;
+    }
+    card.classList.remove("hidden");
+    $("batStatusSub").textContent = b.StatusText || "";
+    $("batChargePct").textContent = `${b.ChargePercent}%`;
+    $("batRemaining").textContent = b.RemainingMinutes ? fmtHours(b.RemainingMinutes / 60) : (b.OnAcPower ? "AC" : "--");
+    $("batRate").textContent = b.ChargeRateWatts ? `${fmtNum(b.ChargeRateWatts, 1)} W` : "-- W";
+    $("batVolt").textContent = b.VoltageV ? `${fmtNum(b.VoltageV, 2)} V` : "-- V";
+    $("batCaps").textContent = (b.FullChargeCapacityMwh && b.DesignCapacityMwh)
+      ? `${fmtNum(b.FullChargeCapacityMwh, 0)} / ${fmtNum(b.DesignCapacityMwh, 0)}`
+      : "--";
+    $("batWear").textContent = b.WearPercent !== null && b.WearPercent !== undefined ? `${fmtNum(b.WearPercent, 1)}%` : "--%";
+    $("batHealthBadge").textContent = b.HealthPercent !== null && b.HealthPercent !== undefined
+      ? `Saúde: ${fmtNum(b.HealthPercent, 0)}%`
+      : `${b.ChargePercent}%`;
+  }
+
+  function renderTopProcesses(t) {
+    const tbody = $("tblTopProcesses");
+    if (!tbody) return;
+    const list = t.TopProcesses || [];
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="muted">Coletando processos...</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map((p) => {
+      const pct = Math.min(100, Math.max(0, p.CpuPercent || 0));
+      const barCol = pct >= 40 ? "var(--rose)" : (pct >= 15 ? "var(--amber)" : "var(--cyan)");
+      const ramStr = p.RamMb >= 1024 ? `${fmtNum(p.RamMb / 1024, 2)} GB` : `${fmtNum(p.RamMb, 0)} MB`;
+      return `
+        <tr>
+          <td><strong>${esc(p.Name)}</strong></td>
+          <td><div class="bar-inline"><div style="width:${Math.max(3, pct)}%;background:${barCol}"></div></div></td>
+          <td class="num" style="color:${barCol}"><strong>${fmtNum(pct, 1)}%</strong></td>
+          <td class="num muted">${ramStr}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
   function renderSystem(payload) {
     const t = payload.Telemetry;
     const specs = [
@@ -1323,6 +1458,8 @@
       if (!event.data) return;
       if (event.data.Type === "initProgress") {
         updateSplashProgress(event.data.Percent || 50, event.data.Message || "");
+      } else if (event.data.Type === "toast") {
+        showToast(event.data.Message || "");
       } else if (event.data.Type === "telemetry") {
         render(event.data);
       }

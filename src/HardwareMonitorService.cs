@@ -20,12 +20,15 @@ namespace PcPowerMonitor
 
         private DateTime _lastDiskRefreshUtc = DateTime.MinValue;
         private List<DiskHealthInfo> _cachedDisks = new List<DiskHealthInfo>();
+        private readonly ProcessMonitor _processMonitor = new ProcessMonitor();
 
         // Fallback WMI universal (garante nomes exatos de CPU, GPU, Placa-mãe e RAM em qualquer PC)
         private string _wmiCpuName;
         private string _wmiGpuName;
         private string _wmiMotherboardName;
         private double? _wmiTotalRamGb;
+        private double? _wmiBatteryDesignMwh;
+        private double? _wmiBatteryFullMwh;
 
         public HardwareMonitorService(Action<int, string> onProgress = null)
         {
@@ -43,7 +46,8 @@ namespace PcPowerMonitor
                 IsPsuEnabled = true,
                 IsControllerEnabled = true,
                 IsStorageEnabled = true,
-                IsNetworkEnabled = true
+                IsNetworkEnabled = true,
+                IsBatteryEnabled = true
             };
 
             try
@@ -123,6 +127,28 @@ namespace PcPowerMonitor
                     {
                         ulong bytes = Convert.ToUInt64(o["TotalPhysicalMemory"]);
                         if (bytes > 0) { _wmiTotalRamGb = Math.Round(bytes / 1073741824.0, 1); break; }
+                    }
+                }
+            }
+            catch { }
+
+            // Capacidade de fabrica vs atual da bateria (notebooks)
+            try
+            {
+                using (var s = new ManagementObjectSearcher(@"root\WMI", "SELECT DesignedCapacity FROM BatteryStaticData"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                    {
+                        double cap = Convert.ToDouble(o["DesignedCapacity"]);
+                        if (cap > 0) { _wmiBatteryDesignMwh = cap; break; }
+                    }
+                }
+                using (var s = new ManagementObjectSearcher(@"root\WMI", "SELECT FullChargedCapacity FROM BatteryFullChargedCapacity"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                    {
+                        double cap = Convert.ToDouble(o["FullChargedCapacity"]);
+                        if (cap > 0) { _wmiBatteryFullMwh = cap; break; }
                     }
                 }
             }
@@ -347,6 +373,12 @@ namespace PcPowerMonitor
             // Verifica tolerância ATX (±5%) nas voltagens da placa-mãe/PSU
             EvaluateAtxVoltages(snap);
 
+            // Saúde da bateria (apenas se o PC for notebook com bateria)
+            snap.Battery = CaptureBatteryHealth();
+
+            // Top processos consumindo CPU/RAM agora
+            snap.TopProcesses = _processMonitor.CaptureTop(8);
+
             snap.Voltages = SortReadings(snap.Voltages);
             snap.PowerSensors = SortReadings(snap.PowerSensors);
             snap.Temperatures = SortReadings(snap.Temperatures);
@@ -355,6 +387,68 @@ namespace PcPowerMonitor
             snap.Loads = SortReadings(snap.Loads);
 
             return snap;
+        }
+
+        private BatteryHealthInfo CaptureBatteryHealth()
+        {
+            try
+            {
+                var ps = System.Windows.Forms.SystemInformation.PowerStatus;
+                if ((ps.BatteryChargeStatus & System.Windows.Forms.BatteryChargeStatus.NoSystemBattery) != 0)
+                    return null;
+
+                var b = new BatteryHealthInfo
+                {
+                    Present = true,
+                    ChargePercent = Math.Max(0, Math.Min(100, (int)Math.Round(ps.BatteryLifePercent * 100.0))),
+                    IsCharging = (ps.BatteryChargeStatus & System.Windows.Forms.BatteryChargeStatus.Charging) != 0,
+                    OnAcPower = ps.PowerLineStatus == System.Windows.Forms.PowerLineStatus.Online
+                };
+
+                if (ps.BatteryLifeRemaining > 0)
+                    b.RemainingMinutes = ps.BatteryLifeRemaining / 60;
+
+                b.StatusText = b.IsCharging ? "Carregando" : (b.OnAcPower ? "Na Tomada (100%)" : "Na Bateria");
+
+                // Complementa com sensores LHM de bateria se disponiveis
+                foreach (var hw in _computer.Hardware)
+                {
+                    if (hw.HardwareType != HardwareType.Battery) continue;
+                    foreach (var s in hw.Sensors)
+                    {
+                        if (!s.Value.HasValue || float.IsNaN(s.Value.Value)) continue;
+                        if (s.SensorType == SensorType.Power && s.Value.Value > 0)
+                            b.ChargeRateWatts = Math.Round(s.Value.Value, 1);
+                        else if (s.SensorType == SensorType.Voltage && s.Value.Value > 0)
+                            b.VoltageV = Math.Round(s.Value.Value, 2);
+                        else if (s.SensorType == SensorType.Energy)
+                        {
+                            if (s.Name.IndexOf("Designed", StringComparison.OrdinalIgnoreCase) >= 0)
+                                b.DesignCapacityMwh = Math.Round(s.Value.Value, 0);
+                            else if (s.Name.IndexOf("Full", StringComparison.OrdinalIgnoreCase) >= 0)
+                                b.FullChargeCapacityMwh = Math.Round(s.Value.Value, 0);
+                        }
+                    }
+                }
+
+                if (!b.DesignCapacityMwh.HasValue && _wmiBatteryDesignMwh.HasValue)
+                    b.DesignCapacityMwh = Math.Round(_wmiBatteryDesignMwh.Value, 0);
+                if (!b.FullChargeCapacityMwh.HasValue && _wmiBatteryFullMwh.HasValue)
+                    b.FullChargeCapacityMwh = Math.Round(_wmiBatteryFullMwh.Value, 0);
+
+                if (b.DesignCapacityMwh.HasValue && b.DesignCapacityMwh.Value > 0 && b.FullChargeCapacityMwh.HasValue)
+                {
+                    double health = Math.Max(0, Math.Min(100, (b.FullChargeCapacityMwh.Value / b.DesignCapacityMwh.Value) * 100.0));
+                    b.HealthPercent = Math.Round(health, 1);
+                    b.WearPercent = Math.Round(Math.Max(0, 100.0 - health), 1);
+                }
+
+                return b;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static void CollectNetwork(IHardware hw, TelemetrySnapshot snap)

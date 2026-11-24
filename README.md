@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-3.2.1-10b981?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-4.0.0-10b981?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/License-MIT-a78bfa?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/Languages-8%20Locales-f59e0b?style=for-the-badge" alt="Languages" />
   <img src="https://img.shields.io/badge/PRs-Welcome-38bdf8?style=for-the-badge" alt="PRs Welcome" />
@@ -40,7 +40,9 @@
 | Category | Capabilities |
 | :--- | :--- |
 | **⚡ Energy & Cost Tracking** | Real-time estimated wall draw (W), automatic **Daily / Weekly (7d) / Monthly** accumulation in **kWh** and configurable currency (`$`, `R$`, `€`), monthly projection, **Hourly breakdown (00h–23h)**, **14-day interactive bar chart**, **Electricity Cost Simulator**, and 1-click **CSV export**. |
-| **🎮 Session / Gaming Meter** | Start a named session before gaming, rendering, or working to track exact duration, energy used (kWh), session cost, average/peak Watts, and peak CPU/GPU temperatures. |
+| **🎮 Auto Game Mode & Quiet Tray** | Automatically detects launched games (Steam, Epic, Riot, Xbox, EA, Ubisoft, Battle.net, GOG, or fullscreen/GPU load), auto-starts/stops session metering, silences non-critical alerts, optionally shows the floating overlay while gaming, and runs in quiet background mode. |
+| **🎨 Frameless UI & 6 Themes** | Custom themed window titlebar (minimize/maximize/close + drag/resize, zero legacy Windows chrome), **6 built-in themes** (`Dark Slate`, `OLED Midnight`, `Cyber Neon`, `Forest Emerald`, `Sunset Carbon`, `Clean Light`), and **Dynamic Tray Icon** (`Logo` / live `CPU °C` / live `Watts`). |
+| **🔍 Top Processes, Battery & API** | Live **Top CPU & RAM Processes** monitor, **Laptop Battery Health & Wear (%)** card (auto-hidden on desktops), built-in **GitHub Auto-Updater**, and optional local JSON API (`http://127.0.0.1:48731/api/telemetry`) for Home Assistant / Stream Deck / Rainmeter. |
 | **🌡️ Thermal Telemetry** | Animated SVG radial gauges for CPU and GPU with dynamic color zones (`Cool`, `Ideal`, `Warm`, `Critical`), live dual-line thermal chart with hover tooltips, and full sensor table (CPU, GPU Core, GPU Hot Spot, Motherboard/VRM, Storage). |
 | **🔌 Voltage Monitor + ATX ±5%** | Highlight cards for `+12V`, `+5V`, `VCore`, and `GPU Core`, automatic **ATX ±5% tolerance validation** on PSU/motherboard rails (`+12V`, `+5V`, `+3.3V`), search/category filters, and min/max oscillation (`Δ`). |
 | **💾 SSD / NVMe / HDD Health** | CrystalDiskInfo-style **Remaining Life (%)** circular gauge, health status (`Good`, `Caution`, `Critical`), temperature, **TBW (Total Bytes Written)**, Total Read, Power-On Hours & Count, TRIM status, used space bar, and expandable full **S.M.A.R.T. attributes** table. |

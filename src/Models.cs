@@ -17,13 +17,22 @@ namespace PcPowerMonitor
         public double TempCriticalC { get; set; }
         public bool MinimizeToTrayOnClose { get; set; }
         public bool StartWithWindows { get; set; }
-        public string Theme { get; set; }
+        public string Theme { get; set; }          // dark, midnight, cyberpunk, emerald, amber, light
         public string Language { get; set; }
         public bool EnableAlerts { get; set; }
         public double MonthlyBudgetAlert { get; set; }
         public bool ShowOverlay { get; set; }
         public int OverlayX { get; set; }
         public int OverlayY { get; set; }
+
+        // v4.0 new settings
+        public bool AutoGameMode { get; set; }
+        public bool AutoOverlayInGame { get; set; }
+        public bool QuietStart { get; set; }
+        public string TrayIconMode { get; set; }   // logo, cpu_temp, watts
+        public bool LocalApiEnabled { get; set; }
+        public int LocalApiPort { get; set; }
+        public bool AutoCheckUpdates { get; set; }
 
         public AppSettings()
         {
@@ -41,6 +50,13 @@ namespace PcPowerMonitor
             ShowOverlay = false;
             OverlayX = -1;
             OverlayY = -1;
+            AutoGameMode = true;
+            AutoOverlayInGame = false;
+            QuietStart = true;
+            TrayIconMode = "logo";
+            LocalApiEnabled = false;
+            LocalApiPort = 48731;
+            AutoCheckUpdates = true;
         }
 
         public void ApplySystemLocaleDefaults()
@@ -90,6 +106,24 @@ namespace PcPowerMonitor
             return DetectSystemLanguage();
         }
 
+        public static string NormalizeTheme(string theme)
+        {
+            if (string.IsNullOrWhiteSpace(theme)) return "dark";
+            string[] supported = new[] { "dark", "midnight", "cyberpunk", "emerald", "amber", "light" };
+            foreach (var t in supported)
+            {
+                if (string.Equals(t, theme.Trim(), StringComparison.OrdinalIgnoreCase)) return t;
+            }
+            return "dark";
+        }
+
+        public static string NormalizeTrayMode(string mode)
+        {
+            if (string.Equals(mode, "cpu_temp", StringComparison.OrdinalIgnoreCase)) return "cpu_temp";
+            if (string.Equals(mode, "watts", StringComparison.OrdinalIgnoreCase)) return "watts";
+            return "logo";
+        }
+
         public static double GetDefaultTariffForCurrency(string isoCurrency)
         {
             if (string.IsNullOrWhiteSpace(isoCurrency)) return 0.20;
@@ -130,7 +164,7 @@ namespace PcPowerMonitor
         public float Min { get; set; }
         public float Max { get; set; }
         public string Unit { get; set; }
-        public string AtxStatus { get; set; } // "", "ok", "warn"
+        public string AtxStatus { get; set; }
     }
 
     public class NetworkReading
@@ -140,6 +174,47 @@ namespace PcPowerMonitor
         public double UploadKBps { get; set; }
         public double? DataDownloadedGb { get; set; }
         public double? DataUploadedGb { get; set; }
+    }
+
+    public class ProcessUsageInfo
+    {
+        public int Pid { get; set; }
+        public string Name { get; set; }
+        public double CpuPercent { get; set; }
+        public double RamMb { get; set; }
+    }
+
+    public class BatteryHealthInfo
+    {
+        public bool Present { get; set; }
+        public int ChargePercent { get; set; }
+        public bool IsCharging { get; set; }
+        public bool OnAcPower { get; set; }
+        public string StatusText { get; set; }
+        public int? RemainingMinutes { get; set; }
+        public double? ChargeRateWatts { get; set; }
+        public double? VoltageV { get; set; }
+        public double? DesignCapacityMwh { get; set; }
+        public double? FullChargeCapacityMwh { get; set; }
+        public double? HealthPercent { get; set; }
+        public double? WearPercent { get; set; }
+    }
+
+    public class GameModeStatus
+    {
+        public bool Active { get; set; }
+        public string GameName { get; set; }
+        public string ProcessName { get; set; }
+        public bool QuietActive { get; set; }
+    }
+
+    public class UpdateInfo
+    {
+        public bool Checked { get; set; }
+        public bool UpdateAvailable { get; set; }
+        public string LatestVersion { get; set; }
+        public string DownloadUrl { get; set; }
+        public string ReleasePageUrl { get; set; }
     }
 
     public class DiskSmartItem
@@ -191,6 +266,7 @@ namespace PcPowerMonitor
     {
         public bool Active { get; set; }
         public bool HasLastSession { get; set; }
+        public bool AutoStarted { get; set; }
         public string Name { get; set; }
         public string StartedAt { get; set; }
         public double ElapsedSeconds { get; set; }
@@ -211,20 +287,17 @@ namespace PcPowerMonitor
         public bool PawnIoInstalled { get; set; }
         public bool Paused { get; set; }
 
-        // Hardware Identity
         public string CpuName { get; set; }
         public string GpuName { get; set; }
         public string MotherboardName { get; set; }
         public List<string> StorageNames { get; set; }
 
-        // Power (W)
         public double CpuWatts { get; set; }
         public double GpuWatts { get; set; }
         public double OtherWatts { get; set; }
         public double ComponentsTotalWatts { get; set; }
         public double EstimatedWallWatts { get; set; }
 
-        // Thermal / Load / Clock / Fan / Network
         public double? CpuTempC { get; set; }
         public double? GpuTempC { get; set; }
         public double? GpuHotspotC { get; set; }
@@ -249,10 +322,10 @@ namespace PcPowerMonitor
         public string ActiveNetworkName { get; set; }
         public List<NetworkReading> Networks { get; set; }
 
-        // ATX Voltage health warnings
         public List<string> AtxWarnings { get; set; }
+        public BatteryHealthInfo Battery { get; set; }
+        public List<ProcessUsageInfo> TopProcesses { get; set; }
 
-        // Detailed sensor tables
         public List<SensorReading> PowerSensors { get; set; }
         public List<SensorReading> Voltages { get; set; }
         public List<SensorReading> Temperatures { get; set; }
@@ -268,6 +341,7 @@ namespace PcPowerMonitor
             StorageNames = new List<string>();
             Networks = new List<NetworkReading>();
             AtxWarnings = new List<string>();
+            TopProcesses = new List<ProcessUsageInfo>();
             PowerSensors = new List<SensorReading>();
             Voltages = new List<SensorReading>();
             Temperatures = new List<SensorReading>();
@@ -327,7 +401,11 @@ namespace PcPowerMonitor
         public TelemetrySnapshot Telemetry { get; set; }
         public EnergySummary Summary { get; set; }
         public SessionStats Session { get; set; }
+        public GameModeStatus GameMode { get; set; }
+        public UpdateInfo Update { get; set; }
         public AppSettings Settings { get; set; }
+        public bool IsMaximized { get; set; }
+        public bool LocalApiRunning { get; set; }
         public string DataDirectory { get; set; }
         public string AppVersion { get; set; }
     }

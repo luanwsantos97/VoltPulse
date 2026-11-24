@@ -24,7 +24,7 @@ jobs:
           if ($env:GITHUB_REF -like "refs/tags/v*") {
             $ver = $env:GITHUB_REF.Replace("refs/tags/v", "")
           } else {
-            $ver = "3.2.0"
+            $ver = "4.0.0"
           }
           echo "version=$ver" >> $env:GITHUB_OUTPUT
 

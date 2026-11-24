@@ -66,8 +66,10 @@ namespace PcPowerMonitor
                         loaded.PollIntervalSeconds = Math.Max(1, Math.Min(60, loaded.PollIntervalSeconds));
                         loaded.TempWarningC = loaded.TempWarningC <= 0 ? 75.0 : Math.Max(40.0, Math.Min(100.0, loaded.TempWarningC));
                         loaded.TempCriticalC = loaded.TempCriticalC <= 0 ? 88.0 : Math.Max(loaded.TempWarningC + 5.0, Math.Min(110.0, loaded.TempCriticalC));
-                        loaded.Theme = string.Equals(loaded.Theme, "light", StringComparison.OrdinalIgnoreCase) ? "light" : "dark";
+                        loaded.Theme = AppSettings.NormalizeTheme(loaded.Theme);
                         loaded.Language = AppSettings.NormalizeLanguage(loaded.Language);
+                        loaded.TrayIconMode = AppSettings.NormalizeTrayMode(loaded.TrayIconMode);
+                        loaded.LocalApiPort = loaded.LocalApiPort < 1024 || loaded.LocalApiPort > 65535 ? 48731 : loaded.LocalApiPort;
                         loaded.MonthlyBudgetAlert = Math.Max(0.0, loaded.MonthlyBudgetAlert);
                         return loaded;
                     }
@@ -138,7 +140,7 @@ namespace PcPowerMonitor
             catch { }
         }
 
-        public void StartSession(string name)
+        public void StartSession(string name, bool autoStarted = false)
         {
             lock (_lock)
             {
@@ -146,6 +148,7 @@ namespace PcPowerMonitor
                 {
                     Active = true,
                     HasLastSession = true,
+                    AutoStarted = autoStarted,
                     Name = string.IsNullOrWhiteSpace(name) ? "Sessão" : name.Trim(),
                     StartedAt = DateTime.Now.ToString("HH:mm:ss"),
                     ElapsedSeconds = 0,
@@ -173,6 +176,7 @@ namespace PcPowerMonitor
                 {
                     Active = _session.Active,
                     HasLastSession = _session.HasLastSession,
+                    AutoStarted = _session.AutoStarted,
                     Name = _session.Name,
                     StartedAt = _session.StartedAt,
                     ElapsedSeconds = _session.ElapsedSeconds,
