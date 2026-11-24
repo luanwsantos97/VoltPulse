@@ -12,84 +12,56 @@
     hoverCharts: {}
   };
 
-  const I18N = {
-    "pt-BR": {
-      nav_overview: "Dashboard",
-      nav_energy: "Energia & Custos",
-      nav_thermals: "Temperaturas",
-      nav_voltages: "Voltagens",
-      nav_disks: "Discos & SSD",
-      nav_system: "Sistema & Rede",
-      nav_settings: "Configurações",
-      mini_wall: "Tomada",
-      mini_today: "Hoje",
-      title_overview: "Dashboard",
-      title_energy: "Energia & Custos",
-      title_thermals: "Temperaturas",
-      title_voltages: "Voltagens (V)",
-      title_disks: "Discos & Saúde do SSD (S.M.A.R.T.)",
-      title_system: "Sistema, Ventoinhas & Rede",
-      title_settings: "Configurações",
-      session_title: "Medidor de Sessão / Jogo",
-      session_sub: "Meça exatamente quanto uma partida, render ou turno de trabalho gastou de energia",
-      sess_dur: "Duração",
-      sess_energy: "Energia Gasta",
-      sess_cost: "Custo da Sessão",
-      sess_peaks: "Picos Térmicos",
-      hourly_title: "Consumo por Hora (Hoje 00h–23h)",
-      hourly_sub: "Veja em quais horários do dia o PC mais consumiu energia",
-      net_title: "Tráfego de Rede em Tempo Real",
-      live: "Ao vivo",
-      paused: "Pausado",
-      start_sess: "▶ Iniciar Sessão",
-      stop_sess: "■ Parar Sessão"
-    },
-    "en-US": {
-      nav_overview: "Dashboard",
-      nav_energy: "Energy & Costs",
-      nav_thermals: "Thermals",
-      nav_voltages: "Voltages",
-      nav_disks: "Disks & SSD",
-      nav_system: "System & Network",
-      nav_settings: "Settings",
-      mini_wall: "Wall Est.",
-      mini_today: "Today",
-      title_overview: "Dashboard",
-      title_energy: "Energy & Costs",
-      title_thermals: "Thermals",
-      title_voltages: "Voltages (V)",
-      title_disks: "Disks & SSD Health (S.M.A.R.T.)",
-      title_system: "System, Fans & Network",
-      title_settings: "Settings",
-      session_title: "Session / Gaming Meter",
-      session_sub: "Measure exact power usage, cost and peak temps during a gaming or work session",
-      sess_dur: "Duration",
-      sess_energy: "Energy Used",
-      sess_cost: "Session Cost",
-      sess_peaks: "Thermal Peaks",
-      hourly_title: "Hourly Consumption (Today 00h–23h)",
-      hourly_sub: "See which hours of the day your PC drew the most power",
-      net_title: "Live Network Traffic",
-      live: "Live",
-      paused: "Paused",
-      start_sess: "▶ Start Session",
-      stop_sess: "■ Stop Session"
-    }
-  };
+  const I18N = window.VOLTPULSE_I18N || {};
+  const LANGUAGES = window.VOLTPULSE_LANGUAGES || [{ code: "en-US", short: "EN", label: "English (US)" }];
+  const CURRENCIES = window.VOLTPULSE_CURRENCIES || [];
 
   function tr(key) {
-    const dict = I18N[state.lang] || I18N["pt-BR"];
-    return dict[key] || I18N["pt-BR"][key] || key;
+    const dict = I18N[state.lang] || I18N["en-US"] || I18N["pt-BR"] || {};
+    return dict[key] || (I18N["en-US"] && I18N["en-US"][key]) || key;
   }
 
   function applyLanguage(lang) {
-    state.lang = lang === "en-US" ? "en-US" : "pt-BR";
+    const found = LANGUAGES.find((l) => l.code.toLowerCase() === String(lang || "").toLowerCase());
+    state.lang = found ? found.code : "en-US";
+    document.documentElement.lang = state.lang;
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       el.textContent = tr(el.dataset.i18n);
     });
     $("pageTitle").textContent = tr("title_" + state.view);
-    if ($("btnLangToggle")) $("btnLangToggle").textContent = state.lang === "en-US" ? "EN" : "PT";
+    if ($("btnLangToggle")) {
+      const meta = LANGUAGES.find((l) => l.code === state.lang);
+      $("btnLangToggle").textContent = meta ? meta.short : "EN";
+      $("btnLangToggle").title = meta ? meta.label : state.lang;
+    }
   }
+
+  // Popula selects de Idiomas (8 idiomas) e Moedas Globais (14 presets)
+  (function initLocaleSelectors() {
+    const selLang = $("setLang");
+    if (selLang) {
+      selLang.innerHTML = LANGUAGES.map((l) => `<option value="${l.code}">${l.label}</option>`).join("");
+    }
+    const selCur = $("setCurrencyPreset");
+    if (selCur) {
+      selCur.innerHTML = `<option value="CUSTOM">— Custom —</option>` +
+        CURRENCIES.map((c) => `<option value="${c.code}">${c.label}</option>`).join("");
+      selCur.addEventListener("change", () => {
+        const hit = CURRENCIES.find((c) => c.code === selCur.value);
+        if (hit) {
+          $("setCurrency").value = hit.symbol;
+          $("setTariff").value = hit.tariff;
+        }
+      });
+    }
+    if ($("btnAutoLocale")) {
+      $("btnAutoLocale").addEventListener("click", () => {
+        state.settingsLoaded = false;
+        sendHost({ action: "resetLocale" });
+        showToast(tr("btn_auto_locale"));
+      });
+    }
+  })();
 
   const $ = (id) => document.getElementById(id);
 
@@ -101,11 +73,12 @@
 
   function fmtNum(v, dec = 1) {
     if (v === null || v === undefined || Number.isNaN(v)) return "--";
-    return Number(v).toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    return Number(v).toLocaleString(state.lang || "en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
   }
 
-  function fmtMoney(v, cur = "R$") {
-    return `${cur} ${fmtNum(v, 2)}`;
+  function fmtMoney(v, cur = "$") {
+    const dec = (cur === "¥" || cur === "₩") ? 0 : 2;
+    return `${cur} ${fmtNum(v, dec)}`;
   }
 
   function fmtHours(h) {
@@ -124,10 +97,10 @@
   }
 
   function tempStatus(c, warn = 75, crit = 88) {
-    if (c >= crit) return { label: "Crítico", cls: "crit" };
-    if (c >= warn) return { label: "Quente", cls: "warn" };
-    if (c <= 45) return { label: "Frio", cls: "cool" };
-    return { label: "Ideal", cls: "ok" };
+    if (c >= crit) return { label: tr("status_crit"), cls: "crit" };
+    if (c >= warn) return { label: tr("status_warn"), cls: "warn" };
+    if (c <= 45) return { label: tr("status_cool"), cls: "cool" };
+    return { label: tr("status_ok"), cls: "ok" };
   }
 
   function catClass(cat) {
@@ -199,12 +172,14 @@
 
   if ($("btnLangToggle")) {
     $("btnLangToggle").addEventListener("click", () => {
-      const next = state.lang === "pt-BR" ? "en-US" : "pt-BR";
+      const idx = LANGUAGES.findIndex((l) => l.code === state.lang);
+      const next = LANGUAGES[(idx + 1) % LANGUAGES.length].code;
       applyLanguage(next);
       if ($("setLang")) $("setLang").value = next;
       if (state.payload && state.payload.Settings) {
         state.payload.Settings.Language = next;
         sendHost({ action: "saveSettings", settings: state.payload.Settings });
+        render(state.payload);
       }
     });
   }
@@ -335,8 +310,9 @@
 
   $("btnSaveSettings").addEventListener("click", () => {
     const newSettings = {
-      TariffPerKwh: parseFloat($("setTariff").value) || 0.85,
-      CurrencySymbol: ($("setCurrency").value || "R$").trim(),
+      TariffPerKwh: parseFloat($("setTariff").value) || 0.20,
+      CurrencySymbol: ($("setCurrency").value || "$").trim(),
+      CurrencyCode: ($("setCurrencyPreset") && $("setCurrencyPreset").value !== "CUSTOM") ? $("setCurrencyPreset").value : "",
       PsuEfficiencyPercent: parseFloat($("setPsuEff").value) || 85,
       BaseSystemWatts: parseFloat($("setBaseWatts").value) || 30,
       PollIntervalSeconds: parseInt($("setInterval").value, 10) || 2,
@@ -345,7 +321,7 @@
       MinimizeToTrayOnClose: $("setMinTray").checked,
       StartWithWindows: $("setStartWin").checked,
       Theme: $("setTheme").value === "light" ? "light" : "dark",
-      Language: ($("setLang") && $("setLang").value === "en-US") ? "en-US" : "pt-BR",
+      Language: ($("setLang") && $("setLang").value) ? $("setLang").value : state.lang,
       EnableAlerts: $("setAlerts") ? $("setAlerts").checked : true,
       MonthlyBudgetAlert: $("setBudget") ? (parseFloat($("setBudget").value) || 0) : 0,
       ShowOverlay: $("setShowOverlay") ? $("setShowOverlay").checked : false
@@ -358,8 +334,8 @@
       state.payload.Settings = newSettings;
       render(state.payload);
     }
-    $("saveHint").textContent = "✓ Salvo!";
-    showToast("Configurações salvas e aplicadas.");
+    $("saveHint").textContent = "✓";
+    showToast(tr("saved_toast"));
     setTimeout(() => { $("saveHint").textContent = ""; }, 2500);
   });
 
@@ -374,9 +350,13 @@
     if (!state.settingsLoaded) {
       state.settingsLoaded = true;
       applyTheme(cfg.Theme || "dark");
-      applyLanguage(cfg.Language || "pt-BR");
+      applyLanguage(cfg.Language || "en-US");
       $("setTariff").value = cfg.TariffPerKwh;
       $("setCurrency").value = cur;
+      if ($("setCurrencyPreset")) {
+        const matchCur = CURRENCIES.find((c) => c.code === cfg.CurrencyCode);
+        $("setCurrencyPreset").value = matchCur ? matchCur.code : "CUSTOM";
+      }
       $("setPsuEff").value = cfg.PsuEfficiencyPercent;
       $("setBaseWatts").value = cfg.BaseSystemWatts;
       $("setInterval").value = cfg.PollIntervalSeconds;
@@ -385,7 +365,7 @@
       $("setMinTray").checked = !!cfg.MinimizeToTrayOnClose;
       $("setStartWin").checked = !!cfg.StartWithWindows;
       $("setTheme").value = cfg.Theme || "dark";
-      if ($("setLang")) $("setLang").value = cfg.Language || "pt-BR";
+      if ($("setLang")) $("setLang").value = state.lang;
       if ($("setAlerts")) $("setAlerts").checked = cfg.EnableAlerts !== false;
       if ($("setBudget")) $("setBudget").value = cfg.MonthlyBudgetAlert || 0;
       if ($("setShowOverlay")) $("setShowOverlay").checked = !!cfg.ShowOverlay;

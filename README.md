@@ -8,9 +8,10 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-3.0.0-10b981?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-3.1.0-10b981?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/License-MIT-a78bfa?style=for-the-badge" alt="License" />
-  <img src="https://img.shields.io/badge/UI-EN--US%20%7C%20PT--BR-f59e0b?style=for-the-badge" alt="Languages" />
+  <img src="https://img.shields.io/badge/Languages-8%20Locales-f59e0b?style=for-the-badge" alt="Languages" />
+  <img src="https://img.shields.io/badge/PRs-Welcome-38bdf8?style=for-the-badge" alt="PRs Welcome" />
   <img src="https://img.shields.io/badge/Runtime-.NET%204.8%20%2B%20WebView2-64748b?style=for-the-badge" alt="Runtime" />
 </p>
 
@@ -44,7 +45,7 @@
 | **🔌 Voltage Monitor + ATX ±5%** | Highlight cards for `+12V`, `+5V`, `VCore`, and `GPU Core`, automatic **ATX ±5% tolerance validation** on PSU/motherboard rails (`+12V`, `+5V`, `+3.3V`), search/category filters, and min/max oscillation (`Δ`). |
 | **💾 SSD / NVMe / HDD Health** | CrystalDiskInfo-style **Remaining Life (%)** circular gauge, health status (`Good`, `Caution`, `Critical`), temperature, **TBW (Total Bytes Written)**, Total Read, Power-On Hours & Count, TRIM status, used space bar, and expandable full **S.M.A.R.T. attributes** table. |
 | **🖥️ Floating Overlay & Alerts** | Compact, semi-transparent, draggable **Always-on-Top Mini Widget** (`W • CPU °C • GPU °C • RAM %`) plus native Windows toast notifications for **critical temperatures**, **out-of-spec ATX voltages**, and **monthly cost budgets**. |
-| **🌐 Network, Themes & Boot** | Live **Download / Upload** speed per adapter, instant **Dark / Light** theme toggle (with native Windows dark title bar), **EN-US / PT-BR** language switcher, **UAC-free Windows startup** via Task Scheduler, and **automatic first-run dependency setup** (PawnIO + WebView2). |
+| **🌐 Global Currency, 8 Languages & Boot** | **Auto-detects your country's currency & average kWh rate** from Windows (`BRL`, `USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `MXN`, `ARS`, `JPY`, `CNY`, `INR`, `KRW`, `PLN` + custom), **8 languages** (`PT-BR`, `EN-US`, `ES`, `FR`, `DE`, `IT`, `JA`, `ZH`), live Download/Upload network speed, Dark/Light theme, **UAC-free startup**, and 1-click auto-setup (PawnIO + WebView2). |
 
 ---
 

@@ -56,19 +56,18 @@ namespace PcPowerMonitor
                     var loaded = ser.Deserialize<AppSettings>(json);
                     if (loaded != null)
                     {
+                        var defaults = new AppSettings();
                         loaded.TariffPerKwh = Math.Max(0.01, loaded.TariffPerKwh);
-                        loaded.CurrencySymbol = string.IsNullOrWhiteSpace(loaded.CurrencySymbol) ? "R$" : loaded.CurrencySymbol.Trim();
+                        loaded.CurrencyCode = string.IsNullOrWhiteSpace(loaded.CurrencyCode) ? defaults.CurrencyCode : loaded.CurrencyCode.Trim().ToUpperInvariant();
+                        loaded.CountryCode = string.IsNullOrWhiteSpace(loaded.CountryCode) ? defaults.CountryCode : loaded.CountryCode.Trim().ToUpperInvariant();
+                        loaded.CurrencySymbol = string.IsNullOrWhiteSpace(loaded.CurrencySymbol) ? defaults.CurrencySymbol : loaded.CurrencySymbol.Trim();
                         loaded.PsuEfficiencyPercent = Math.Max(50.0, Math.Min(99.0, loaded.PsuEfficiencyPercent));
                         loaded.BaseSystemWatts = Math.Max(0.0, loaded.BaseSystemWatts);
                         loaded.PollIntervalSeconds = Math.Max(1, Math.Min(60, loaded.PollIntervalSeconds));
                         loaded.TempWarningC = loaded.TempWarningC <= 0 ? 75.0 : Math.Max(40.0, Math.Min(100.0, loaded.TempWarningC));
                         loaded.TempCriticalC = loaded.TempCriticalC <= 0 ? 88.0 : Math.Max(loaded.TempWarningC + 5.0, Math.Min(110.0, loaded.TempCriticalC));
                         loaded.Theme = string.Equals(loaded.Theme, "light", StringComparison.OrdinalIgnoreCase) ? "light" : "dark";
-                        if (string.IsNullOrWhiteSpace(loaded.Language) || (loaded.Language != "pt-BR" && loaded.Language != "en-US"))
-                        {
-                            loaded.Language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("pt", StringComparison.OrdinalIgnoreCase)
-                                ? "pt-BR" : "en-US";
-                        }
+                        loaded.Language = AppSettings.NormalizeLanguage(loaded.Language);
                         loaded.MonthlyBudgetAlert = Math.Max(0.0, loaded.MonthlyBudgetAlert);
                         return loaded;
                     }

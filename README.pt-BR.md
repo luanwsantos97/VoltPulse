@@ -8,9 +8,10 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Plataforma-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Plataforma" />
-  <img src="https://img.shields.io/badge/Vers%C3%A3o-3.0.0-10b981?style=for-the-badge" alt="Versão" />
+  <img src="https://img.shields.io/badge/Vers%C3%A3o-3.1.0-10b981?style=for-the-badge" alt="Versão" />
   <img src="https://img.shields.io/badge/Licen%C3%A7a-MIT-a78bfa?style=for-the-badge" alt="Licença" />
-  <img src="https://img.shields.io/badge/Idiomas-PT--BR%20%7C%20EN--US-f59e0b?style=for-the-badge" alt="Idiomas" />
+  <img src="https://img.shields.io/badge/Idiomas-8%20Idiomas-f59e0b?style=for-the-badge" alt="Idiomas" />
+  <img src="https://img.shields.io/badge/PRs-Bem--vindos-38bdf8?style=for-the-badge" alt="PRs Bem-vindos" />
   <img src="https://img.shields.io/badge/Runtime-.NET%204.8%20%2B%20WebView2-64748b?style=for-the-badge" alt="Runtime" />
 </p>
 
@@ -44,7 +45,7 @@ O **VoltPulse** é um aplicativo desktop leve, nativo e open-source para Windows
 | **🔌 Voltagens & Validação ATX (±5%)** | Cards de destaque para `+12V`, `+5V`, `VCore` e `GPU Core`, validação automática da tolerância **ATX ±5%** nas trilhas da fonte/placa-mãe (`+12V`, `+5V`, `+3.3V`), busca, filtros por componente e cálculo de oscilação (`Δ = Máx − Mín`). |
 | **💾 Saúde & Vida Útil de SSD / HD** | Visual estilo **CrystalDiskInfo** com gauge circular de **Vida Útil (%)**, status (`Saudável`, `Atenção`, `Crítico`), temperatura, **TBW (Total Gravado)**, Total Lido, Horas Ligado, Nº de Ligações, TRIM, barra de espaço ocupado e tabela completa de atributos **S.M.A.R.T.**. |
 | **🖥️ Mini Widget Flutuante & Alertas** | **Overlay compacto** sempre no topo, arrastável e semi-transparente (`W • CPU °C • GPU °C • RAM %`) + notificações nativas do Windows para **temperatura crítica**, **voltagem ATX fora de faixa** e **meta de gasto mensal**. |
-| **🌐 Rede, Temas & Boot sem UAC** | **Download / Upload** em tempo real por adaptador, alternância instantânea **Tema Escuro / Claro** (com barra de título nativa adaptada), **PT-BR / EN-US**, **Iniciar com o Windows sem pop-up de UAC** (Agendador de Tarefas) e **auto-instalador de dependências** na primeira abertura. |
+| **🌐 Moeda Global, 8 Idiomas & Rede** | **Detecta automaticamente a moeda e tarifa padrão do seu país** pelo Windows (`R$`, `$`, `€`, `£`, `C$`, `A$`, `CHF`, `MX$`, `¥`, `₹`, `₩`, `zł` + custom), **8 idiomas** (`PT-BR`, `EN`, `ES`, `FR`, `DE`, `IT`, `JA`, `ZH`), tráfego de rede ao vivo, Tema Escuro/Claro, **boot sem UAC** e instalador automático (PawnIO + WebView2). |
 
 ---
 

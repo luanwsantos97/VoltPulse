@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.1.0] - 2026-11-23
+### Adicionado
+- **Detecção automática de País, Moeda e Tarifa Inicial pelo Windows** (`RegionInfo.CurrentRegion`): suporta automaticamente `BRL`, `USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `MXN`, `ARS`, `JPY`, `CNY`, `INR`, `KRW`, `PLN` e qualquer outra moeda local, com 14 presets globais e botão **"Auto-detectar do Windows"** nas Configurações.
+- **Suporte a 8 idiomas** em módulo dedicado [`ui/i18n.js`](ui/i18n.js): Português (BR), English (US), Español, Français, Deutsch, Italiano, 日本語 e 简体中文 — com detecção automática pelo idioma do Windows e formatação numérica localizada.
+- **Estrutura aberta a contribuições**: `.github/PULL_REQUEST_TEMPLATE.md`, `CODE_OF_CONDUCT.md` e guia de como contribuir novos idiomas em `CONTRIBUTING.md`.
+
 ## [3.0.0] - 2026-11-23
 ### Adicionado
 - **Ícone `.ico` vetorial multi-resolução** (`16/32/48/256px`) embutido diretamente no `VoltPulse.exe`.

@@ -8,6 +8,8 @@ namespace PcPowerMonitor
     {
         public double TariffPerKwh { get; set; }
         public string CurrencySymbol { get; set; }
+        public string CurrencyCode { get; set; }
+        public string CountryCode { get; set; }
         public double PsuEfficiencyPercent { get; set; }
         public double BaseSystemWatts { get; set; }
         public int PollIntervalSeconds { get; set; }
@@ -16,7 +18,7 @@ namespace PcPowerMonitor
         public bool MinimizeToTrayOnClose { get; set; }
         public bool StartWithWindows { get; set; }
         public string Theme { get; set; }
-        public string Language { get; set; } // "pt-BR" or "en-US"
+        public string Language { get; set; }
         public bool EnableAlerts { get; set; }
         public double MonthlyBudgetAlert { get; set; }
         public bool ShowOverlay { get; set; }
@@ -25,8 +27,7 @@ namespace PcPowerMonitor
 
         public AppSettings()
         {
-            TariffPerKwh = 0.85;
-            CurrencySymbol = "R$";
+            ApplySystemLocaleDefaults();
             PsuEfficiencyPercent = 85.0;
             BaseSystemWatts = 30.0;
             PollIntervalSeconds = 2;
@@ -35,13 +36,87 @@ namespace PcPowerMonitor
             MinimizeToTrayOnClose = true;
             StartWithWindows = false;
             Theme = "dark";
-            Language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("pt", StringComparison.OrdinalIgnoreCase)
-                ? "pt-BR" : "en-US";
             EnableAlerts = true;
             MonthlyBudgetAlert = 0.0;
             ShowOverlay = false;
             OverlayX = -1;
             OverlayY = -1;
+        }
+
+        public void ApplySystemLocaleDefaults()
+        {
+            Language = DetectSystemLanguage();
+            try
+            {
+                var region = RegionInfo.CurrentRegion;
+                CountryCode = region.TwoLetterISORegionName;
+                CurrencyCode = region.ISOCurrencySymbol;
+                CurrencySymbol = string.IsNullOrWhiteSpace(region.CurrencySymbol) ? region.ISOCurrencySymbol : region.CurrencySymbol;
+                TariffPerKwh = GetDefaultTariffForCurrency(CurrencyCode);
+            }
+            catch
+            {
+                CountryCode = "US";
+                CurrencyCode = "USD";
+                CurrencySymbol = "$";
+                TariffPerKwh = 0.17;
+            }
+        }
+
+        public static string DetectSystemLanguage()
+        {
+            string two = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
+            switch (two)
+            {
+                case "pt": return "pt-BR";
+                case "es": return "es-ES";
+                case "fr": return "fr-FR";
+                case "de": return "de-DE";
+                case "it": return "it-IT";
+                case "ja": return "ja-JP";
+                case "zh": return "zh-CN";
+                default: return "en-US";
+            }
+        }
+
+        public static string NormalizeLanguage(string lang)
+        {
+            if (string.IsNullOrWhiteSpace(lang)) return DetectSystemLanguage();
+            string[] supported = new[] { "pt-BR", "en-US", "es-ES", "fr-FR", "de-DE", "it-IT", "ja-JP", "zh-CN" };
+            foreach (var s in supported)
+            {
+                if (string.Equals(s, lang.Trim(), StringComparison.OrdinalIgnoreCase)) return s;
+            }
+            return DetectSystemLanguage();
+        }
+
+        public static double GetDefaultTariffForCurrency(string isoCurrency)
+        {
+            if (string.IsNullOrWhiteSpace(isoCurrency)) return 0.20;
+            switch (isoCurrency.ToUpperInvariant())
+            {
+                case "BRL": return 0.85;
+                case "USD": return 0.17;
+                case "EUR": return 0.30;
+                case "GBP": return 0.26;
+                case "CAD": return 0.15;
+                case "AUD": return 0.32;
+                case "CHF": return 0.32;
+                case "JPY": return 31.0;
+                case "CNY": return 0.55;
+                case "INR": return 7.50;
+                case "MXN": return 2.20;
+                case "ARS": return 120.0;
+                case "CLP": return 180.0;
+                case "COP": return 850.0;
+                case "PEN": return 0.75;
+                case "KRW": return 160.0;
+                case "PLN": return 1.10;
+                case "TRY": return 2.60;
+                case "RUB": return 6.00;
+                case "ZAR": return 3.20;
+                default: return 0.20;
+            }
         }
     }
 

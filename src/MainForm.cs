@@ -16,7 +16,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "3.0.0";
+        public const string AppVersion = "3.1.0";
 
         private readonly HardwareMonitorService _monitor;
         private readonly EnergyStorage _storage;
@@ -188,6 +188,12 @@ namespace PcPowerMonitor
                         PollAndPush(true);
                         break;
 
+                    case "resetLocale":
+                        _settings.ApplySystemLocaleDefaults();
+                        _storage.SaveSettings(_settings);
+                        PollAndPush(true);
+                        break;
+
                     case "saveSettings":
                         HandleSaveSettings(msg);
                         break;
@@ -258,9 +264,15 @@ namespace PcPowerMonitor
             var sDict = msg["settings"] as Dictionary<string, object>;
             if (sDict == null) return;
 
-            _settings.TariffPerKwh = ReadDouble(sDict, "TariffPerKwh", _settings.TariffPerKwh, 0.01, 50.0);
+            _settings.TariffPerKwh = ReadDouble(sDict, "TariffPerKwh", _settings.TariffPerKwh, 0.001, 5000.0);
             _settings.CurrencySymbol = ReadString(sDict, "CurrencySymbol", _settings.CurrencySymbol);
-            if (string.IsNullOrWhiteSpace(_settings.CurrencySymbol)) _settings.CurrencySymbol = "R$";
+            _settings.CurrencyCode = ReadString(sDict, "CurrencyCode", _settings.CurrencyCode);
+            if (string.IsNullOrWhiteSpace(_settings.CurrencySymbol))
+            {
+                var def = new AppSettings();
+                _settings.CurrencySymbol = def.CurrencySymbol;
+                _settings.CurrencyCode = def.CurrencyCode;
+            }
             _settings.PsuEfficiencyPercent = ReadDouble(sDict, "PsuEfficiencyPercent", _settings.PsuEfficiencyPercent, 50.0, 99.0);
             _settings.BaseSystemWatts = ReadDouble(sDict, "BaseSystemWatts", _settings.BaseSystemWatts, 0.0, 500.0);
             _settings.PollIntervalSeconds = (int)ReadDouble(sDict, "PollIntervalSeconds", _settings.PollIntervalSeconds, 1.0, 60.0);
@@ -269,10 +281,9 @@ namespace PcPowerMonitor
             _settings.MinimizeToTrayOnClose = ReadBool(sDict, "MinimizeToTrayOnClose", _settings.MinimizeToTrayOnClose);
             _settings.StartWithWindows = ReadBool(sDict, "StartWithWindows", _settings.StartWithWindows);
             _settings.Theme = ReadString(sDict, "Theme", _settings.Theme) == "light" ? "light" : "dark";
-            string lang = ReadString(sDict, "Language", _settings.Language);
-            _settings.Language = (lang == "en-US") ? "en-US" : "pt-BR";
+            _settings.Language = AppSettings.NormalizeLanguage(ReadString(sDict, "Language", _settings.Language));
             _settings.EnableAlerts = ReadBool(sDict, "EnableAlerts", _settings.EnableAlerts);
-            _settings.MonthlyBudgetAlert = ReadDouble(sDict, "MonthlyBudgetAlert", _settings.MonthlyBudgetAlert, 0.0, 100000.0);
+            _settings.MonthlyBudgetAlert = ReadDouble(sDict, "MonthlyBudgetAlert", _settings.MonthlyBudgetAlert, 0.0, 1000000.0);
             bool wantOverlay = ReadBool(sDict, "ShowOverlay", _settings.ShowOverlay);
 
             SetOverlayVisible(wantOverlay, false);

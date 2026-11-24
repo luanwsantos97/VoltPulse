@@ -1,39 +1,56 @@
 # Contributing to VoltPulse / Contribuindo com o VoltPulse
 
+VoltPulse is an open-source community project — Pull Requests, translations, new hardware sensors, and bug reports are always welcome!
+
+---
+
 ## 🇺🇸 English
 
-Contributions are very welcome! Whether it's a bug fix, a new sensor integration, UI polish, or translation improvements:
-
-1. **Fork** the repository and create a feature branch:
+### How to Contribute Code
+1. **Fork** the repository (`https://github.com/luanwsantos97/VoltPulse`).
+2. Clone your fork and create a branch:
    ```bash
    git checkout -b feat/your-feature-name
    ```
-2. Make your changes in `src/` (C# backend) or `ui/` (HTML/CSS/JS dashboard).
-3. Validate JavaScript syntax and compile cleanly:
+3. Make your edits in `src/` (C# backend) or `ui/` (HTML/CSS/JS dashboard).
+4. Validate syntax and build cleanly on Windows:
    ```powershell
+   node --check ui/i18n.js
    node --check ui/app.js
    powershell -ExecutionPolicy Bypass -File .\build.ps1
    ```
-4. Open a **Pull Request** explaining what changed (screenshots are greatly appreciated for UI updates).
+5. Push your branch and open a **Pull Request** using the PR template.
 
-> **UI Tip:** You can open `ui/index.html` directly in your browser to test visual changes with built-in simulated telemetry.
+### 🌍 How to Add a New Language (Easy First Contribution!)
+VoltPulse already supports **8 languages** (`pt-BR`, `en-US`, `es-ES`, `fr-FR`, `de-DE`, `it-IT`, `ja-JP`, `zh-CN`). To add another (e.g., Korean, Polish, Russian, Turkish):
+1. Open [`ui/i18n.js`](ui/i18n.js).
+2. Add your language entry to `VOLTPULSE_LANGUAGES` and copy the `"en-US"` block in `VOLTPULSE_I18N` with your translations.
+3. Add your language code to `AppSettings.DetectSystemLanguage()` and `AppSettings.NormalizeLanguage()` in [`src/Models.cs`](src/Models.cs).
+4. Open a Pull Request — even without installing Visual Studio, GitHub Actions will automatically verify the build!
+
+### 💱 How to Add a Country Currency Preset
+Add a new entry in `VOLTPULSE_CURRENCIES` inside [`ui/i18n.js`](ui/i18n.js) and its default tariff in `AppSettings.GetDefaultTariffForCurrency()` inside [`src/Models.cs`](src/Models.cs).
 
 ---
 
 ## 🇧🇷 Português (Brasil)
 
-Contribuições são muito bem-vindas! Seja uma correção de bug, novo sensor, melhoria visual ou tradução:
+O VoltPulse é um projeto open-source aberto à comunidade — Pull Requests, novas traduções, sensores e correções são sempre bem-vindos!
 
-1. Faça um **Fork** do repositório e crie uma branch:
+### Como Contribuir com Código
+1. Faça um **Fork** do repositório (`https://github.com/luanwsantos97/VoltPulse`).
+2. Crie uma branch para sua mudança:
    ```bash
    git checkout -b feat/sua-melhoria
    ```
-2. Faça suas alterações em `src/` (backend C#) ou `ui/` (dashboard HTML/CSS/JS).
-3. Valide a sintaxe JS e compile sem erros:
+3. Edite os arquivos em `src/` (backend C#) ou `ui/` (interface HTML/CSS/JS).
+4. Valide o JS e compile:
    ```powershell
+   node --check ui/i18n.js
    node --check ui/app.js
    powershell -ExecutionPolicy Bypass -File .\build.ps1
    ```
-4. Abra um **Pull Request** descrevendo a mudança (prints ajudam bastante em alterações visuais).
+5. Envie sua branch e abra um **Pull Request** (o GitHub Actions valida automaticamente a compilação!).
 
-> **Dica de UI:** Abra `ui/index.html` direto no navegador para testar o visual rapidamente usando o modo de demonstração automático.
+### 🌍 Como Adicionar um Novo Idioma
+Basta adicionar o bloco traduzido em [`ui/i18n.js`](ui/i18n.js) e registrar o código do idioma em `AppSettings.NormalizeLanguage()` em [`src/Models.cs`](src/Models.cs).

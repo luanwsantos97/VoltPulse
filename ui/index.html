@@ -122,7 +122,7 @@
         <div class="kpi-grid">
           <div class="kpi-card accent-cyan">
             <div class="kpi-head">
-              <span>AGORA (TOMADA EST.)</span>
+              <span data-i18n="kpi_now">AGORA (TOMADA EST.)</span>
               <span class="kpi-chip cyan" id="kpiEffChip">85% PSU</span>
             </div>
             <div class="kpi-value" id="kpiNowWatts">-- W</div>
@@ -131,7 +131,7 @@
 
           <div class="kpi-card accent-green">
             <div class="kpi-head">
-              <span>CONSUMO HOJE</span>
+              <span data-i18n="kpi_today">CONSUMO HOJE</span>
               <span class="kpi-chip green" id="kpiTodayHours">0m</span>
             </div>
             <div class="kpi-value" id="kpiTodayCost">--</div>
@@ -140,7 +140,7 @@
 
           <div class="kpi-card accent-purple">
             <div class="kpi-head">
-              <span>SEMANA (7 DIAS)</span>
+              <span data-i18n="kpi_week">SEMANA (7 DIAS)</span>
               <span class="kpi-chip purple" id="kpiWeekDays">0d</span>
             </div>
             <div class="kpi-value" id="kpiWeekCost">--</div>
@@ -149,8 +149,8 @@
 
           <div class="kpi-card accent-amber">
             <div class="kpi-head">
-              <span>MÊS ATUAL</span>
-              <span class="kpi-chip amber">PROJEÇÃO</span>
+              <span data-i18n="kpi_month">MÊS ATUAL</span>
+              <span class="kpi-chip amber" data-i18n="kpi_proj">PROJEÇÃO</span>
             </div>
             <div class="kpi-value" id="kpiMonthCost">--</div>
             <div class="kpi-sub" id="kpiMonthSub">Proj. mês: --</div>
@@ -201,7 +201,7 @@
               </svg>
               <div class="gauge-center">
                 <div class="gauge-val" id="gPowerVal">-- W</div>
-                <div class="gauge-tag">Carga Tomada</div>
+                <div class="gauge-tag" data-i18n="gauge_power">Carga Tomada</div>
               </div>
             </div>
             <div class="gauge-footer">
@@ -218,7 +218,7 @@
               </svg>
               <div class="gauge-center">
                 <div class="gauge-val" id="gRamVal">--%</div>
-                <div class="gauge-tag">Memória RAM</div>
+                <div class="gauge-tag" data-i18n="gauge_ram">Memória RAM</div>
               </div>
             </div>
             <div class="gauge-footer">
@@ -233,11 +233,11 @@
           <div class="card chart-card">
             <div class="card-header">
               <div>
-                <div class="card-title">Potência em Tempo Real</div>
-                <div class="card-sub">Passe o mouse para ver valores exatos</div>
+                <div class="card-title" data-i18n="chart_power_title">Potência em Tempo Real</div>
+                <div class="card-sub" data-i18n="chart_power_sub">Passe o mouse para ver valores exatos</div>
               </div>
               <div class="legend">
-                <span><i class="dot cyan"></i>Tomada (est.)</span>
+                <span><i class="dot cyan"></i><span data-i18n="mini_wall">Tomada</span></span>
                 <span><i class="dot green"></i>GPU</span>
                 <span><i class="dot purple"></i>CPU</span>
               </div>
@@ -250,8 +250,8 @@
           <div class="card chart-card">
             <div class="card-header">
               <div>
-                <div class="card-title">Temperaturas em Tempo Real</div>
-                <div class="card-sub">Evolução térmica de CPU e GPU (°C)</div>
+                <div class="card-title" data-i18n="chart_temp_title">Temperaturas em Tempo Real</div>
+                <div class="card-sub" data-i18n="chart_temp_sub">Evolução térmica de CPU e GPU (°C)</div>
               </div>
               <div class="legend">
                 <span><i class="dot amber"></i>CPU</span>
@@ -269,10 +269,10 @@
           <div class="card">
             <div class="card-header">
               <div>
-                <div class="card-title">Consumo dos Últimos 7 Dias</div>
-                <div class="card-sub">Energia diária acumulada em kWh e custo estimado</div>
+                <div class="card-title" data-i18n="chart_7d_title">Consumo dos Últimos 7 Dias</div>
+                <div class="card-sub" data-i18n="chart_7d_sub">Energia diária acumulada em kWh e custo estimado</div>
               </div>
-              <button class="btn btn-ghost btn-sm" data-goto="energy">Ver detalhes →</button>
+              <button class="btn btn-ghost btn-sm" data-goto="energy" data-i18n="btn_details">Ver detalhes →</button>
             </div>
             <div class="canvas-box sm">
               <canvas id="chartOverviewBars"></canvas>
@@ -282,8 +282,8 @@
           <div class="card">
             <div class="card-header">
               <div>
-                <div class="card-title">Sensores de Potência (W)</div>
-                <div class="card-sub">Leitura direta por componente</div>
+                <div class="card-title" data-i18n="sensors_power_title">Sensores de Potência (W)</div>
+                <div class="card-sub" data-i18n="sensors_power_sub">Leitura direta por componente</div>
               </div>
             </div>
             <div class="table-wrap compact">
@@ -584,23 +584,29 @@
           <div class="card">
             <div class="card-header">
               <div>
-                <div class="card-title">Tarifa &amp; Estimativa na Tomada</div>
-                <div class="card-sub">Calibre o cálculo para ficar fiel à sua conta de energia</div>
+                <div class="card-title" data-i18n="set_energy_title">Tarifa, Moeda &amp; Estimativa na Tomada</div>
+                <div class="card-sub" data-i18n="set_energy_sub">Adapte automaticamente à moeda do seu país ou personalize</div>
               </div>
+              <button class="btn btn-ghost btn-sm" id="btnAutoLocale" data-i18n="btn_auto_locale">Auto-detectar do Windows</button>
             </div>
 
             <div class="form-grid">
               <label class="form-field">
-                <span>Tarifa de energia (por kWh)</span>
-                <input type="number" id="setTariff" step="0.01" min="0.01" max="50" />
+                <span>País / Moeda (Presets globais)</span>
+                <select id="setCurrencyPreset" class="select-input full"></select>
               </label>
 
               <label class="form-field">
-                <span>Símbolo da moeda</span>
-                <input type="text" id="setCurrency" maxlength="5" placeholder="R$" />
+                <span>Símbolo da moeda (customizável)</span>
+                <input type="text" id="setCurrency" maxlength="6" placeholder="R$" />
               </label>
 
-              <label class="form-field">
+              <label class="form-field" style="grid-column:span 2">
+                <span>Tarifa de energia elétrica (por kWh)</span>
+                <input type="number" id="setTariff" step="0.01" min="0.001" max="5000" />
+              </label>
+
+              <label class="form-field" style="grid-column:span 2">
                 <span>Eficiência da fonte PSU (%)</span>
                 <input type="number" id="setPsuEff" step="1" min="50" max="99" />
                 <div class="preset-row">
@@ -611,7 +617,7 @@
                 </div>
               </label>
 
-              <label class="form-field">
+              <label class="form-field" style="grid-column:span 2">
                 <span>Consumo base extra (W) — Placa-mãe, RAM, SSD, fans, monitor</span>
                 <input type="number" id="setBaseWatts" step="5" min="0" max="500" />
                 <div class="preset-row">
@@ -623,15 +629,15 @@
             </div>
 
             <div class="formula-box">
-              <strong>Fórmula:</strong> Tomada (W) = (CPU + GPU + Outros sensores + Base extra) ÷ (Eficiência ÷ 100)
+              <strong>Fórmula:</strong> Wall (W) = (CPU + GPU + Sensors + Base) ÷ (PSU Efficiency ÷ 100)
             </div>
           </div>
 
           <div class="card">
             <div class="card-header">
               <div>
-                <div class="card-title">Alertas Térmicos &amp; Comportamento</div>
-                <div class="card-sub">Personalize limites de temperatura, tema e inicialização</div>
+                <div class="card-title" data-i18n="set_behav_title">Alertas, Idioma &amp; Comportamento</div>
+                <div class="card-sub" data-i18n="set_behav_sub">Personalize limites térmicos, tema, idioma e inicialização</div>
               </div>
             </div>
 
@@ -646,30 +652,27 @@
                 <input type="number" id="setTempCrit" step="1" min="50" max="110" />
               </label>
 
-              <label class="form-field">
-                <span>Intervalo de leitura (segundos)</span>
+              <label class="form-field" style="grid-column:span 1">
+                <span>Intervalo de leitura (s)</span>
                 <input type="number" id="setInterval" step="1" min="1" max="30" />
               </label>
 
-              <label class="form-field">
-                <span>Tema da interface</span>
+              <label class="form-field" style="grid-column:span 1">
+                <span>Tema / Theme</span>
                 <select id="setTheme" class="select-input full">
                   <option value="dark">Escuro (Dark Slate)</option>
                   <option value="light">Claro (Clean Light)</option>
                 </select>
               </label>
 
-              <label class="form-field">
+              <label class="form-field" style="grid-column:span 1">
                 <span>Idioma / Language</span>
-                <select id="setLang" class="select-input full">
-                  <option value="pt-BR">Português (Brasil)</option>
-                  <option value="en-US">English (US)</option>
-                </select>
+                <select id="setLang" class="select-input full"></select>
               </label>
 
-              <label class="form-field">
-                <span>Meta de gasto mensal — alerta (0 = desativado)</span>
-                <input type="number" id="setBudget" step="5" min="0" max="10000" />
+              <label class="form-field" style="grid-column:span 1">
+                <span>Meta mensal — alerta (0 = off)</span>
+                <input type="number" id="setBudget" step="5" min="0" max="1000000" />
               </label>
             </div>
 
@@ -693,7 +696,7 @@
             </div>
 
             <div class="save-bar">
-              <button class="btn btn-primary" id="btnSaveSettings">Salvar Configurações</button>
+              <button class="btn btn-primary" id="btnSaveSettings" data-i18n="btn_save">Salvar Configurações</button>
               <span class="save-hint" id="saveHint"></span>
             </div>
           </div>
@@ -738,6 +741,7 @@
   <!-- TOAST -->
   <div id="toast" class="toast hidden"></div>
 
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
