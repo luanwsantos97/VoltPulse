@@ -1,5 +1,35 @@
 (() => {
   const isHost = !!(window.chrome && window.chrome.webview);
+  const $ = (id) => document.getElementById(id);
+
+  function sendHost(obj) {
+    if (isHost) {
+      window.chrome.webview.postMessage(obj);
+    }
+  }
+
+  function updateSplashProgress(step, statusText) {
+    const bar = $("splashProgress");
+    const sub = $("splashStatus");
+    if (sub && statusText) sub.textContent = statusText;
+    if (bar) bar.style.width = `${Math.min(100, Math.max(15, step))}%`;
+    if (step >= 45 && $("stHw")) { $("stHw").className = "splash-step done"; $("stHw").textContent = "✓ CPU, GPU, Placa-mãe & RAM"; }
+    if (step >= 75 && $("stSensors")) { $("stSensors").className = "splash-step done"; $("stSensors").textContent = "✓ Sensores de Energia, Voltagem & Temperatura"; }
+    if (step >= 100 && $("stDisks")) { $("stDisks").className = "splash-step done"; $("stDisks").textContent = "✓ Saúde S.M.A.R.T. de SSDs & Discos"; }
+  }
+
+  function hideSplash() {
+    const el = $("splashScreen");
+    if (el && !el.classList.contains("done")) {
+      updateSplashProgress(100, "Pronto!");
+      setTimeout(() => el.classList.add("done"), 180);
+    }
+  }
+
+  window.addEventListener("error", (ev) => {
+    const sub = $("splashStatus");
+    if (sub) sub.textContent = "Erro na interface: " + (ev.message || "desconhecido");
+  });
 
   const state = {
     view: "overview",
@@ -62,14 +92,6 @@
       });
     }
   })();
-
-  const $ = (id) => document.getElementById(id);
-
-  function sendHost(obj) {
-    if (isHost) {
-      window.chrome.webview.postMessage(obj);
-    }
-  }
 
   function fmtNum(v, dec = 1) {
     if (v === null || v === undefined || Number.isNaN(v)) return "--";
@@ -208,6 +230,7 @@
       sendHost({ action: "saveSettings", settings: state.payload.Settings });
     }
     redrawAllCharts();
+    hideSplash();
   });
 
   function applyTheme(theme) {
@@ -509,6 +532,7 @@
     $("diagDataDir").textContent = payload.DataDirectory || "%LocalAppData%\\PcPowerMonitor";
 
     redrawAllCharts();
+    hideSplash();
   }
 
   function renderOverviewPower(t) {
@@ -1296,7 +1320,10 @@
   // ==================== HOST BRIDGE OR DEMO FALLBACK ====================
   if (isHost) {
     window.chrome.webview.addEventListener("message", (event) => {
-      if (event.data && event.data.Type === "telemetry") {
+      if (!event.data) return;
+      if (event.data.Type === "initProgress") {
+        updateSplashProgress(event.data.Percent || 50, event.data.Message || "");
+      } else if (event.data.Type === "telemetry") {
         render(event.data);
       }
     });

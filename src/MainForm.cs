@@ -16,9 +16,10 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "3.2.0";
+        public const string AppVersion = "3.2.1";
 
-        private readonly HardwareMonitorService _monitor;
+        private HardwareMonitorService _monitor;
+        private bool _monitorInitializing;
         private readonly EnergyStorage _storage;
         private readonly AppSettings _settings;
         private readonly CultureInfo _ptBr = new CultureInfo("pt-BR");
@@ -52,7 +53,6 @@ namespace PcPowerMonitor
         {
             _storage = new EnergyStorage();
             _settings = _storage.LoadSettings();
-            _monitor = new HardwareMonitorService();
 
             Text = "VoltPulse — PC Power, Voltage & Thermal Monitor";
             Size = new Size(1260, 820);
@@ -73,16 +73,69 @@ namespace PcPowerMonitor
 
             _pollTimer = new Timer { Interval = Math.Max(1000, _settings.PollIntervalSeconds * 1000) };
             _pollTimer.Tick += (s, e) => PollAndPush();
-            _pollTimer.Start();
 
-            Shown += (s, e) => InitializeWebViewAsync();
+            Shown += (s, e) =>
+            {
+                InitializeWebViewAsync();
+                InitializeHardwareAsync();
+            };
 
             if (startMinimized)
             {
                 WindowState = FormWindowState.Minimized;
                 ShowInTaskbar = false;
-                Load += (s, e) => Hide();
+                Load += (s, e) =>
+                {
+                    Hide();
+                    InitializeHardwareAsync();
+                };
             }
+        }
+
+        private void PushInitProgress(int percent, string message)
+        {
+            if (InvokeRequired)
+            {
+                try { BeginInvoke(new Action<int, string>(PushInitProgress), percent, message); } catch { }
+                return;
+            }
+            if (_webReady && _webView != null && _webView.CoreWebView2 != null)
+            {
+                try
+                {
+                    var obj = new Dictionary<string, object>
+                    {
+                        { "Type", "initProgress" },
+                        { "Percent", percent },
+                        { "Message", message }
+                    };
+                    _webView.CoreWebView2.PostWebMessageAsJson(_json.Serialize(obj));
+                }
+                catch { }
+            }
+        }
+
+        private void InitializeHardwareAsync()
+        {
+            if (_monitor != null || _monitorInitializing) return;
+            _monitorInitializing = true;
+
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                var svc = new HardwareMonitorService((pct, msg) => PushInitProgress(pct, msg));
+                try
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        _monitor = svc;
+                        _monitorInitializing = false;
+                        _lastTickUtc = DateTime.UtcNow;
+                        _pollTimer.Start();
+                        PollAndPush(true);
+                    }));
+                }
+                catch { }
+            });
         }
 
         private void ApplyTitleBarTheme(bool dark)
@@ -390,6 +443,7 @@ namespace PcPowerMonitor
 
         private void PollAndPush(bool forcePush = false)
         {
+            if (_monitor == null) return;
             if (_paused && !forcePush) return;
 
             DateTime nowUtc = DateTime.UtcNow;
@@ -573,7 +627,7 @@ namespace PcPowerMonitor
                 _trayIcon.Visible = false;
                 _trayIcon.Dispose();
             }
-            _monitor.Dispose();
+            if (_monitor != null) _monitor.Dispose();
             Application.Exit();
         }
 
@@ -589,7 +643,7 @@ namespace PcPowerMonitor
             }
 
             _storage.Flush();
-            _monitor.Dispose();
+            if (_monitor != null) _monitor.Dispose();
             if (_overlayForm != null && !_overlayForm.IsDisposed) _overlayForm.Close();
             if (_trayIcon != null) _trayIcon.Visible = false;
             base.OnFormClosing(e);

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Management;
 using System.Security.Principal;
 using DiskInfoToolkit;
 using DiskInfoToolkit.Enums.Interop;
@@ -20,9 +21,19 @@ namespace PcPowerMonitor
         private DateTime _lastDiskRefreshUtc = DateTime.MinValue;
         private List<DiskHealthInfo> _cachedDisks = new List<DiskHealthInfo>();
 
-        public HardwareMonitorService()
+        // Fallback WMI universal (garante nomes exatos de CPU, GPU, Placa-mãe e RAM em qualquer PC)
+        private string _wmiCpuName;
+        private string _wmiGpuName;
+        private string _wmiMotherboardName;
+        private double? _wmiTotalRamGb;
+
+        public HardwareMonitorService(Action<int, string> onProgress = null)
         {
             _isAdmin = CheckIsAdmin();
+            if (onProgress != null) onProgress(30, "Identificando CPU, GPU, Placa-mãe e RAM...");
+            LoadWmiHardwareFallback();
+
+            if (onProgress != null) onProgress(55, "Abrindo sensores de hardware (LibreHardwareMonitor)...");
             _computer = new Computer
             {
                 IsCpuEnabled = true,
@@ -43,6 +54,79 @@ namespace PcPowerMonitor
             {
                 _initError = ex.Message;
             }
+
+            if (onProgress != null) onProgress(85, "Mapeando saúde S.M.A.R.T. dos SSDs e discos...");
+        }
+
+        private void LoadWmiHardwareFallback()
+        {
+            try
+            {
+                using (var s = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                    {
+                        var n = Convert.ToString(o["Name"]);
+                        if (!string.IsNullOrWhiteSpace(n)) { _wmiCpuName = n.Trim(); break; }
+                    }
+                }
+            }
+            catch { }
+
+            try
+            {
+                var gpus = new List<string>();
+                using (var s = new ManagementObjectSearcher("SELECT Name FROM Win32_VideoController"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                    {
+                        var n = Convert.ToString(o["Name"]);
+                        if (!string.IsNullOrWhiteSpace(n)) gpus.Add(n.Trim());
+                    }
+                }
+                if (gpus.Count > 0)
+                {
+                    // Prefere GPU fisica (ignora adaptadores virtuais como MuMuPlayer / Parsec / Basic Display)
+                    var realGpu = gpus.FirstOrDefault(g =>
+                        g.IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) < 0 &&
+                        g.IndexOf("Basic Display", StringComparison.OrdinalIgnoreCase) < 0 &&
+                        g.IndexOf("Remote", StringComparison.OrdinalIgnoreCase) < 0);
+                    _wmiGpuName = realGpu ?? gpus[0];
+                }
+            }
+            catch { }
+
+            try
+            {
+                using (var s = new ManagementObjectSearcher("SELECT Manufacturer, Product FROM Win32_BaseBoard"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                    {
+                        var mfg = (Convert.ToString(o["Manufacturer"]) ?? "").Trim();
+                        var prod = (Convert.ToString(o["Product"]) ?? "").Trim();
+                        if (!string.IsNullOrWhiteSpace(prod))
+                        {
+                            _wmiMotherboardName = string.IsNullOrWhiteSpace(mfg) || prod.StartsWith(mfg, StringComparison.OrdinalIgnoreCase)
+                                ? prod : (mfg + " " + prod);
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            try
+            {
+                using (var s = new ManagementObjectSearcher("SELECT TotalPhysicalMemory FROM Win32_ComputerSystem"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                    {
+                        ulong bytes = Convert.ToUInt64(o["TotalPhysicalMemory"]);
+                        if (bytes > 0) { _wmiTotalRamGb = Math.Round(bytes / 1073741824.0, 1); break; }
+                    }
+                }
+            }
+            catch { }
         }
 
         public bool IsAdmin { get { return _isAdmin; } }
@@ -89,9 +173,9 @@ namespace PcPowerMonitor
                 IsAdmin = _isAdmin,
                 PawnIoInstalled = CheckPawnIoInstalled(),
                 Paused = paused,
-                CpuName = "CPU",
-                GpuName = "GPU",
-                MotherboardName = "Motherboard"
+                CpuName = _wmiCpuName ?? "CPU",
+                GpuName = _wmiGpuName ?? "GPU",
+                MotherboardName = _wmiMotherboardName ?? "Motherboard"
             };
 
             if (!string.IsNullOrEmpty(_initError))
@@ -231,6 +315,11 @@ namespace PcPowerMonitor
             {
                 var memLoad = snap.Loads.FirstOrDefault(l => l.HardwareType == "Memória" && l.SensorName.IndexOf("Memory", StringComparison.OrdinalIgnoreCase) >= 0 && l.SensorName.IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) < 0);
                 if (memLoad != null) snap.RamLoadPercent = Math.Round(memLoad.Value, 1);
+            }
+
+            if (!snap.RamTotalGb.HasValue && _wmiTotalRamGb.HasValue)
+            {
+                snap.RamTotalGb = _wmiTotalRamGb;
             }
 
             // VRAM

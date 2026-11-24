@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.2.1] - 2026-11-23
+### Corrigido & Melhorado
+- **Correção crítica de inicialização na UI (`ui/app.js`)**: corrigido erro `ReferenceError` na ordem de declaração do helper `$` que impedia a dashboard de sair de *"Detectando componentes do PC..."*.
+- **Splash Screen integrado suave e leve**: a janela abre instantaneamente com animação de progresso em 3 etapas enquanto os sensores são inicializados em segundo plano (`Task.Run`), revelando a dashboard já preenchida assim que o primeiro snapshot chega.
+- **Fallback WMI universal (`Win32_Processor`, `Win32_VideoController`, `Win32_BaseBoard`, `Win32_ComputerSystem`)**: garante identificação precisa de CPU, GPU física (filtrando adaptadores virtuais), placa-mãe e RAM total em qualquer PC ou notebook Windows.
+
 ## [3.2.0] - 2026-11-23
 ### Adicionado
 - **Instalador Windows Profissional (`VoltPulse-Setup-v3.2.0.exe`)** via Inno Setup 6 (`installer/VoltPulse.iss`):

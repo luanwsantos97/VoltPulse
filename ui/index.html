@@ -7,6 +7,31 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- SPLASH OVERLAY INTEGRADO (leve, animado, some automaticamente no 1o snapshot real) -->
+  <div id="splashScreen" class="splash-screen">
+    <div class="splash-card">
+      <div class="splash-logo-ring">
+        <svg viewBox="0 0 32 32" width="38" height="38" fill="none">
+          <path d="M18.5 3L7 17.5h8L13.5 29 25 14.5h-8L18.5 3z" fill="url(#vpSplashGrad)" />
+          <defs>
+            <linearGradient id="vpSplashGrad" x1="7" y1="3" x2="25" y2="29" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#38BDF8"/>
+              <stop offset="1" stop-color="#34D399"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="splash-title">VoltPulse</div>
+      <div class="splash-sub" id="splashStatus">Detectando hardware e calibrando sensores...</div>
+      <div class="splash-bar"><div class="splash-bar-fill" id="splashProgress"></div></div>
+      <div class="splash-steps" id="splashSteps">
+        <div class="splash-step active" id="stHw">● CPU, GPU, Placa-mãe &amp; RAM</div>
+        <div class="splash-step" id="stSensors">○ Sensores de Energia, Voltagem &amp; Temperatura</div>
+        <div class="splash-step" id="stDisks">○ Saúde S.M.A.R.T. de SSDs &amp; Discos</div>
+      </div>
+    </div>
+  </div>
+
   <div class="app-shell">
     <!-- SIDEBAR -->
     <aside class="sidebar">
