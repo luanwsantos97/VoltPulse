@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Plataforma-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Plataforma" />
-  <img src="https://img.shields.io/badge/Vers%C3%A3o-4.0.0-10b981?style=for-the-badge" alt="Versão" />
+  <img src="https://img.shields.io/badge/Vers%C3%A3o-4.1.0-10b981?style=for-the-badge" alt="Versão" />
   <img src="https://img.shields.io/badge/Licen%C3%A7a-MIT-a78bfa?style=for-the-badge" alt="Licença" />
   <img src="https://img.shields.io/badge/Idiomas-8%20Idiomas-f59e0b?style=for-the-badge" alt="Idiomas" />
   <img src="https://img.shields.io/badge/PRs-Bem--vindos-38bdf8?style=for-the-badge" alt="PRs Bem-vindos" />
@@ -42,7 +42,7 @@ O **VoltPulse** é um aplicativo desktop leve, nativo e open-source para Windows
 | **⚡ Energia & Conta de Luz** | Potência estimada na tomada (W) ao vivo, acumulado automático de **Hoje**, **Semana (7 dias)** e **Mês Atual** em **kWh** e moeda configurável (`R$`, `$`, `€`), projeção mensal, **Consumo por Hora (00h–23h)**, **gráfico interativo de 14 dias**, **Simulador de Conta de Luz** e exportação **CSV** em 1 clique. |
 | **🎮 Modo Jogo Automático & Quieto** | Detecta automaticamente jogos iniciados (Steam, Epic, Riot, Xbox, EA, Ubisoft, Battle.net, GOG ou tela cheia/GPU), inicia e finaliza o medidor de sessão sozinho, silencia avisos não-críticos, abre o Overlay opcionalmente e roda quieto em segundo plano. |
 | **🎨 Janela Sem Bordas & 6 Temas** | Barra de título 100% integrada ao tema (Minimizar/Maximizar/Fechar estilizados, sem barra padrão do Windows), **6 temas visuais** (`Dark Slate`, `OLED Midnight`, `Cyber Neon`, `Forest Emerald`, `Sunset Carbon`, `Clean Light`) e **Ícone Dinâmico na Bandeja** (`Logo` / `CPU °C` / `Watts`). |
-| **🔍 Top Processos, Bateria & API** | Tabela ao vivo dos **processos que mais puxam CPU/RAM**, card de **Saúde & Desgaste da Bateria** (em notebooks), **Verificador de Atualizações via GitHub** e **API JSON local opcional** (`127.0.0.1:48731/api/telemetry`) para Home Assistant / Stream Deck. |
+| **🛡️ Eco / Undervolt Seguro & Ultra-Leve** | Perfis 1-clique certificados (**Padrão / Eco / Ultra Silencioso** + **Eco automático fora de jogos**) via `powercfg` oficial e `nvidia-smi` dentro da faixa `[Mín, Padrão]` de fábrica (GPUs integradas são bloqueadas por segurança — zero risco de BSOD). Na bandeja, suspende o WebView2, ativa **EcoQoS**, usa polling adaptativo de 5s e reduz em **90%** as escritas no SSD! |
 | **🌡️ Telemetria Térmica** | Medidores circulares SVG animados para CPU e GPU com faixas dinâmicas (`Frio`, `Ideal`, `Quente`, `Crítico`), gráfico térmico ao vivo com tooltip interativo e tabela completa (CPU, GPU Core, GPU Hot Spot, Placa-mãe/VRM e SSD/HD). |
 | **🔌 Voltagens & Validação ATX (±5%)** | Cards de destaque para `+12V`, `+5V`, `VCore` e `GPU Core`, validação automática da tolerância **ATX ±5%** nas trilhas da fonte/placa-mãe (`+12V`, `+5V`, `+3.3V`), busca, filtros por componente e cálculo de oscilação (`Δ = Máx − Mín`). |
 | **💾 Saúde & Vida Útil de SSD / HD** | Visual estilo **CrystalDiskInfo** com gauge circular de **Vida Útil (%)**, status (`Saudável`, `Atenção`, `Crítico`), temperatura, **TBW (Total Gravado)**, Total Lido, Horas Ligado, Nº de Ligações, TRIM, barra de espaço ocupado e tabela completa de atributos **S.M.A.R.T.**. |

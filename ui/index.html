@@ -86,6 +86,11 @@
           <span data-i18n="nav_energy">Energia &amp; Custos</span>
           <span class="nav-pill hidden" id="navSessionPill">REC</span>
         </button>
+        <button class="nav-item" data-view="tuning">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span data-i18n="nav_tuning">Eco &amp; Undervolt</span>
+          <span class="nav-pill" id="navTuningBadge">Stock</span>
+        </button>
         <button class="nav-item" data-view="thermals">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
           <span data-i18n="nav_thermals">Temperaturas</span>
@@ -493,6 +498,111 @@
         </div>
       </section>
 
+      <!-- VIEW 2B: SAFE ECO & UNDERVOLT TUNING -->
+      <section class="view" id="view-tuning">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🛡️ Perfis Seguros de Eficiência &amp; Undervolt Térmico</div>
+              <div class="card-sub">Usa exclusivamente limites certificados do Windows (powercfg) e drivers oficiais — zero risco de Tela Azul (BSOD) ou dano ao hardware</div>
+            </div>
+            <button class="btn btn-danger btn-sm" id="btnRestoreStock">↺ Restaurar Padrão de Fábrica</button>
+          </div>
+
+          <div class="tuning-profiles-grid">
+            <button type="button" class="profile-card" id="profStock" data-prof="stock">
+              <div class="prof-head"><span class="prof-ico">⚖️</span><strong>Padrão (Stock)</strong></div>
+              <p>Configuração original de fábrica: CPU 100% com Turbo Boost normal e GPU 100% do Power Limit.</p>
+              <span class="prof-meta">CPU 100% • Boost Normal • GPU 100%</span>
+            </button>
+
+            <button type="button" class="profile-card" id="profEco" data-prof="eco">
+              <div class="prof-head"><span class="prof-ico">🌿</span><strong>Eco Inteligente</strong><span class="status-tag ok">Recomendado</span></div>
+              <p>Reduz picos de tensão e temperatura em até 15°C e 25–35% menos consumo mantendo alta fluidez.</p>
+              <span class="prof-meta">CPU 99% • Boost Eficiente • GPU 85%</span>
+            </button>
+
+            <button type="button" class="profile-card" id="profUltra" data-prof="ultra_eco">
+              <div class="prof-head"><span class="prof-ico">🤫</span><strong>Ultra Silencioso</strong></div>
+              <p>Consumo mínimo para estudos, trabalho leve, downloads ou deixar o PC ligado à noite.</p>
+              <span class="prof-meta">CPU 85% • Boost Off • GPU 75%</span>
+            </button>
+          </div>
+
+          <div class="toggle-list" style="margin-top:14px">
+            <label class="toggle-row">
+              <input type="checkbox" id="chkAutoEcoOutsideGames" />
+              <span>🎮 <strong>Automático Inteligente:</strong> manter PC em <em>Eco</em> fora de jogos e liberar <em>Padrão (Stock)</em> automaticamente ao abrir um jogo</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="two-col-grid">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Ajuste Fino Seguro (CPU &amp; GPU Dedicada)</div>
+                <div class="card-sub">GPUs integradas são ignoradas automaticamente por segurança</div>
+              </div>
+              <span class="badge badge-ok" id="tuningGpuBadge">Verificando GPU...</span>
+            </div>
+
+            <div class="sim-controls">
+              <div class="sim-field">
+                <div class="sim-label-row">
+                  <span>Estado Máximo da CPU (PowerCfg)</span>
+                  <strong id="tunCpuPctLabel">100%</strong>
+                </div>
+                <input type="range" id="tunCpuPct" min="50" max="100" step="1" value="100" />
+              </div>
+
+              <div class="sim-field">
+                <div class="sim-label-row">
+                  <span>Modo de Turbo Boost da CPU</span>
+                </div>
+                <select id="tunCpuBoost" class="select-input full">
+                  <option value="2">Agressivo (Padrão de fábrica)</option>
+                  <option value="3">Eficiente (Menor voltagem / temperatura)</option>
+                  <option value="1">Habilitado (Normal)</option>
+                  <option value="0">Desativado (Máxima economia térmica)</option>
+                </select>
+              </div>
+
+              <div class="sim-field" id="tunGpuBox">
+                <div class="sim-label-row">
+                  <span>Power Limit GPU Dedicada (<span id="tunGpuName">--</span>)</span>
+                  <strong id="tunGpuPctLabel">100%</strong>
+                </div>
+                <input type="range" id="tunGpuPct" min="65" max="100" step="5" value="100" />
+                <div class="card-sub" id="tunGpuNote" style="margin-top:6px"></div>
+              </div>
+            </div>
+
+            <div class="save-bar">
+              <button class="btn btn-primary" id="btnApplyCustomTuning">Aplicar Ajuste Seguro</button>
+              <span class="save-hint" id="tunLastMsg"></span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">⚡ Otimização do Próprio VoltPulse</div>
+                <div class="card-sub">Projetado para gastar quase zero CPU, RAM, Disco e Energia</div>
+              </div>
+              <span class="badge badge-ok" id="appMemBadge">RAM: -- MB</span>
+            </div>
+            <ul class="eco-bullets">
+              <li><strong>WebView2 Suspenso na Bandeja:</strong> ao fechar no <code>X</code>, congela o motor gráfico e devolve memória ao Windows.</li>
+              <li><strong>EcoQoS (Eficiência Windows 11):</strong> roda em baixa prioridade nos núcleos de eficiência em segundo plano.</li>
+              <li><strong>Polling Adaptativo:</strong> desacelera para 5s na bandeja e pausa leitura de processos até você reabrir a janela.</li>
+              <li><strong>Proteção de SSD (-90% escritas):</strong> salva o histórico no disco a cada 3 minutos e automaticamente antes de desligar/suspender.</li>
+              <li><strong>100% Reversível:</strong> nenhum registrador perigoso (MSR/VRM) é modificado; tudo volta ao padrão de fábrica com 1 clique ou ao sair.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <!-- VIEW 3: THERMALS -->
       <section class="view" id="view-thermals">
         <div class="thermal-summary-grid" id="thermalCards"></div>
@@ -820,6 +930,14 @@
               <label class="toggle-row">
                 <input type="checkbox" id="setAutoUpdates" />
                 <span>🔄 Verificar atualizações automaticamente no GitHub</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="setRestoreStockExit" />
+                <span>🛡️ Restaurar perfil de energia padrão (Stock) ao encerrar o VoltPulse</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="setUltraLowBg" />
+                <span>🍃 Modo Ultra-Leve na bandeja (suspende WebView2, EcoQoS e reduz escritas no SSD)</span>
               </label>
             </div>
 

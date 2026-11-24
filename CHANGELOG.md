@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.1.0] - 2026-11-23
+### Adicionado
+- **🛡️ Nova aba `Eco & Undervolt Seguro` (`SafePowerTuner.cs`)**:
+  - Perfis 1-clique (**Padrão Stock**, **Eco Inteligente**, **Ultra Silencioso**) + **Automático Inteligente** (Eco fora de jogos → Stock automaticamente ao abrir um jogo).
+  - Controle seguro de CPU via APIs oficiais do Windows (`powercfg` Estado Máximo & Modo de Boost) — zero escrita arriscada em MSR/VRM, zero risco de Tela Azul (BSOD).
+  - Detecção rigorosa de **GPUs dedicadas NVIDIA e AMD** (filtrando automaticamente GPUs integradas Intel/AMD APU e adaptadores virtuais). Em NVIDIA dedicada, ajusta Power Limit via `nvidia-smi` oficial respeitando estritamente `[MinLimit, DefaultLimit]` de fábrica.
+  - Restauração garantida para Padrão (Stock) em 1 clique ou automaticamente ao fechar o app.
+- **⚡ Otimização Extrema de CPU, RAM, Disco e Energia**:
+  - **WebView2 suspenso automaticamente na bandeja** (`TrySuspendAsync()`) + `SetProcessWorkingSetSize` trim de memória.
+  - **Windows EcoQoS (`ProcessPowerThrottling`)** + prioridade `BelowNormal` para rodar nos núcleos de eficiência em segundo plano.
+  - **Polling adaptativo**: 5s na bandeja, pulando `ProcessMonitor`, leitura SMART frequente (5 min) e serialização JSON enquanto a janela está oculta.
+  - **Proteção de SSD (-90% escritas)**: flush de histórico a cada 3 minutos (180s) + gravação garantida em `SessionEnding` (desligamento) e `PowerModeChanged` (suspensão).
+
 ## [4.0.0] - 2026-11-23
 ### Adicionado
 - **Janela Frameless com Barra de Título 100% do Tema**: botões Minimizar / Maximizar / Fechar estilizados, arraste nativo, duplo clique para maximizar, cantos arredondados no Windows 11 e redimensionamento em todas as bordas.

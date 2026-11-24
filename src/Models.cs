@@ -34,6 +34,12 @@ namespace PcPowerMonitor
         public int LocalApiPort { get; set; }
         public bool AutoCheckUpdates { get; set; }
 
+        // v4.1 Safe Eco Tuning & Ultra-Low Footprint
+        public string TuningProfile { get; set; }      // stock, eco, ultra_eco, custom
+        public bool AutoEcoOutsideGames { get; set; }
+        public bool RestoreStockOnExit { get; set; }
+        public bool UltraLowBackgroundMode { get; set; }
+
         public AppSettings()
         {
             ApplySystemLocaleDefaults();
@@ -57,6 +63,10 @@ namespace PcPowerMonitor
             LocalApiEnabled = false;
             LocalApiPort = 48731;
             AutoCheckUpdates = true;
+            TuningProfile = "stock";
+            AutoEcoOutsideGames = false;
+            RestoreStockOnExit = true;
+            UltraLowBackgroundMode = true;
         }
 
         public void ApplySystemLocaleDefaults()
@@ -402,8 +412,10 @@ namespace PcPowerMonitor
         public EnergySummary Summary { get; set; }
         public SessionStats Session { get; set; }
         public GameModeStatus GameMode { get; set; }
+        public PowerTuningStatus Tuning { get; set; }
         public UpdateInfo Update { get; set; }
         public AppSettings Settings { get; set; }
+        public double AppMemoryMb { get; set; }
         public bool IsMaximized { get; set; }
         public bool LocalApiRunning { get; set; }
         public string DataDirectory { get; set; }

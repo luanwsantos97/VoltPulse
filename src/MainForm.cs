@@ -17,14 +17,16 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "4.0.0";
+        public const string AppVersion = "4.1.0";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
         private readonly EnergyStorage _storage;
         private readonly AppSettings _settings;
         private readonly GameDetector _gameDetector = new GameDetector();
+        private readonly SafePowerTuner _tuner = new SafePowerTuner();
         private readonly LocalApiServer _localApi = new LocalApiServer();
+        private bool _inBackgroundEcoMode;
         private readonly CultureInfo _ptBr = new CultureInfo("pt-BR");
         private readonly JavaScriptSerializer _json = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
 
@@ -65,6 +67,49 @@ namespace PcPowerMonitor
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern bool DestroyIcon(IntPtr handle);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool SetProcessWorkingSetSize(IntPtr proc, IntPtr min, IntPtr max);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetProcessInformation(IntPtr hProcess, int processInformationClass, ref PROCESS_POWER_THROTTLING_STATE processInformation, int processInformationSize);
+
+        private const int ProcessPowerThrottling = 4;
+        private const uint PROCESS_POWER_THROTTLING_CURRENT_VERSION = 1;
+        private const uint PROCESS_POWER_THROTTLING_EXECUTION_SPEED = 0x1;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct PROCESS_POWER_THROTTLING_STATE
+        {
+            public uint Version;
+            public uint ControlMask;
+            public uint StateMask;
+        }
+
+        private static void SetEcoQos(bool enable)
+        {
+            try
+            {
+                var state = new PROCESS_POWER_THROTTLING_STATE
+                {
+                    Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION,
+                    ControlMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
+                    StateMask = enable ? PROCESS_POWER_THROTTLING_EXECUTION_SPEED : 0
+                };
+                SetProcessInformation(Process.GetCurrentProcess().Handle, ProcessPowerThrottling, ref state, Marshal.SizeOf(typeof(PROCESS_POWER_THROTTLING_STATE)));
+            }
+            catch { }
+        }
+
+        private static void TrimMemory()
+        {
+            try
+            {
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized, false);
+                SetProcessWorkingSetSize(Process.GetCurrentProcess().Handle, (IntPtr)(-1), (IntPtr)(-1));
+            }
+            catch { }
+        }
 
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
@@ -114,6 +159,14 @@ namespace PcPowerMonitor
 
             if (_settings.LocalApiEnabled)
                 _localApi.Start(_settings.LocalApiPort);
+
+            // Prioridade abaixo do normal para nunca disputar CPU com jogos ou trabalho
+            try { Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal; } catch { }
+
+            if (_settings.AutoEcoOutsideGames)
+                _tuner.ApplyProfile("eco", true);
+            else if (!string.IsNullOrEmpty(_settings.TuningProfile) && _settings.TuningProfile != "stock")
+                _tuner.ApplyProfile(_settings.TuningProfile, false);
 
             _pollTimer = new Timer { Interval = Math.Max(1000, _settings.PollIntervalSeconds * 1000) };
             _pollTimer.Tick += (s, e) => PollAndPush();
@@ -446,6 +499,36 @@ namespace PcPowerMonitor
                         PollAndPush(true);
                         break;
 
+                    case "applyTuningProfile":
+                        string prof = msg.ContainsKey("profile") ? Convert.ToString(msg["profile"]) : "stock";
+                        bool autoEco = msg.ContainsKey("autoEco") && Convert.ToBoolean(msg["autoEco"]);
+                        _settings.TuningProfile = prof;
+                        _settings.AutoEcoOutsideGames = autoEco;
+                        _tuner.ApplyProfile(prof, autoEco);
+                        _storage.SaveSettings(_settings);
+                        PollAndPush(true);
+                        break;
+
+                    case "applyTuningCustom":
+                        int cpuPct = (int)ReadDouble(msg, "cpuMaxPercent", 99, 50, 100);
+                        int cpuBoost = (int)ReadDouble(msg, "cpuBoostMode", 3, 0, 3);
+                        int gpuPct = (int)ReadDouble(msg, "gpuPowerPercent", 85, 65, 100);
+                        bool autoEcoC = ReadBool(msg, "autoEco", _settings.AutoEcoOutsideGames);
+                        _settings.TuningProfile = "custom";
+                        _settings.AutoEcoOutsideGames = autoEcoC;
+                        _tuner.ApplyCustom("custom", cpuPct, cpuBoost, gpuPct, autoEcoC);
+                        _storage.SaveSettings(_settings);
+                        PollAndPush(true);
+                        break;
+
+                    case "restoreStockTuning":
+                        _settings.TuningProfile = "stock";
+                        _settings.AutoEcoOutsideGames = false;
+                        _tuner.RestoreStock();
+                        _storage.SaveSettings(_settings);
+                        PollAndPush(true);
+                        break;
+
                     case "checkUpdates":
                         CheckUpdatesAsync(true);
                         break;
@@ -530,6 +613,8 @@ namespace PcPowerMonitor
             _settings.LocalApiEnabled = ReadBool(sDict, "LocalApiEnabled", _settings.LocalApiEnabled);
             _settings.LocalApiPort = (int)ReadDouble(sDict, "LocalApiPort", _settings.LocalApiPort, 1024, 65535);
             _settings.AutoCheckUpdates = ReadBool(sDict, "AutoCheckUpdates", _settings.AutoCheckUpdates);
+            _settings.RestoreStockOnExit = ReadBool(sDict, "RestoreStockOnExit", _settings.RestoreStockOnExit);
+            _settings.UltraLowBackgroundMode = ReadBool(sDict, "UltraLowBackgroundMode", _settings.UltraLowBackgroundMode);
 
             SetOverlayVisible(wantOverlay, false);
 
@@ -643,14 +728,24 @@ namespace PcPowerMonitor
             if (_monitor == null) return;
             if (_paused && !forcePush) return;
 
+            bool uiVisible = Visible && WindowState != FormWindowState.Minimized;
+            bool bgUltraLow = !uiVisible && _settings.UltraLowBackgroundMode;
+
+            // Ajusta intervalo adaptativo automaticamente (5s na bandeja vs intervalo rapido na tela)
+            int targetInterval = bgUltraLow
+                ? Math.Max(5000, _settings.PollIntervalSeconds * 1000)
+                : Math.Max(1000, _settings.PollIntervalSeconds * 1000);
+            if (_pollTimer.Interval != targetInterval)
+                _pollTimer.Interval = targetInterval;
+
             DateTime nowUtc = DateTime.UtcNow;
             double elapsed = (nowUtc - _lastTickUtc).TotalSeconds;
             _lastTickUtc = nowUtc;
 
-            var snap = _monitor.Capture(_settings, _paused);
+            var snap = _monitor.Capture(_settings, _paused, bgUltraLow);
             _lastSnapshot = snap;
 
-            // Modo Jogo Automatico
+            // Modo Jogo Automatico + Auto Eco fora de jogos
             HandleAutoGameMode(snap);
 
             if (!_paused && elapsed > 0.2)
@@ -659,7 +754,6 @@ namespace PcPowerMonitor
             }
 
             var summary = _storage.GetSummary(_settings.TariffPerKwh);
-            var session = _storage.GetSessionSnapshot();
 
             // Atualiza Overlay se visivel
             if (_overlayForm != null && !_overlayForm.IsDisposed && _overlayForm.Visible)
@@ -670,7 +764,7 @@ namespace PcPowerMonitor
             // Atualiza icone dinamico na bandeja (logo / cpu_temp / watts)
             UpdateDynamicTrayIcon(snap);
 
-            // Verifica alertas nativos (silencia alertas nao-criticos em Modo Jogo Quieto)
+            // Verifica alertas nativos
             if (_settings.EnableAlerts && !_paused)
             {
                 CheckAndNotifyAlerts(snap, summary, _lastGameMode.QuietActive);
@@ -684,6 +778,14 @@ namespace PcPowerMonitor
             if (tip.Length > 63) tip = tip.Substring(0, 63);
             if (_trayIcon != null) _trayIcon.Text = tip;
 
+            // OTIMIZACAO: nao serializa nem envia JSON se a janela estiver oculta na bandeja e API local desligada!
+            if (!uiVisible && !_localApi.IsRunning && !forcePush)
+                return;
+
+            var session = _storage.GetSessionSnapshot();
+            double memMb = 0;
+            try { memMb = Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1048576.0, 1); } catch { }
+
             var payload = new DashboardPayload
             {
                 Type = "telemetry",
@@ -691,8 +793,10 @@ namespace PcPowerMonitor
                 Summary = summary,
                 Session = session,
                 GameMode = _lastGameMode,
+                Tuning = _tuner.GetStatus(),
                 Update = _updateInfo,
                 Settings = _settings,
+                AppMemoryMb = memMb,
                 IsMaximized = WindowState == FormWindowState.Maximized,
                 LocalApiRunning = _localApi.IsRunning,
                 DataDirectory = _storage.DataDirectory,
@@ -707,7 +811,7 @@ namespace PcPowerMonitor
                 if (_localApi.IsRunning)
                     _localApi.UpdatePayloadJson(jsonStr);
 
-                if (_webReady && _webView != null && _webView.CoreWebView2 != null)
+                if (uiVisible && _webReady && _webView != null && _webView.CoreWebView2 != null)
                 {
                     try { _webView.CoreWebView2.PostWebMessageAsJson(jsonStr); } catch { }
                 }
@@ -728,6 +832,12 @@ namespace PcPowerMonitor
                     _storage.StartSession("🎮 " + game.GameName, true);
                 }
 
+                // Se Auto Eco fora de jogos estiver ativo, libera performance Stock ao abrir jogo!
+                if (_settings.AutoEcoOutsideGames)
+                {
+                    _tuner.ApplyProfile("stock", true);
+                }
+
                 if (_settings.AutoOverlayInGame && !_settings.ShowOverlay)
                 {
                     _overlayAutoShownByGame = true;
@@ -740,6 +850,12 @@ namespace PcPowerMonitor
                 if (curSess.Active && curSess.AutoStarted)
                 {
                     _storage.StopSession();
+                }
+
+                // Ao fechar o jogo, volta automaticamente para o perfil Eco seguro!
+                if (_settings.AutoEcoOutsideGames)
+                {
+                    _tuner.ApplyProfile("eco", true);
                 }
 
                 if (_overlayAutoShownByGame)
@@ -917,14 +1033,40 @@ namespace PcPowerMonitor
             PollAndPush(true);
         }
 
+        private async void EnterBackgroundEcoMode()
+        {
+            if (_inBackgroundEcoMode || !_settings.UltraLowBackgroundMode) return;
+            _inBackgroundEcoMode = true;
+            SetEcoQos(true);
+            try
+            {
+                if (_webView != null && _webView.CoreWebView2 != null)
+                {
+                    await _webView.CoreWebView2.TrySuspendAsync();
+                }
+            }
+            catch { }
+            TrimMemory();
+        }
+
+        private void LeaveBackgroundEcoMode()
+        {
+            if (!_inBackgroundEcoMode) return;
+            _inBackgroundEcoMode = false;
+            SetEcoQos(false);
+        }
+
         private void RestoreFromTray()
         {
+            LeaveBackgroundEcoMode();
             Show();
             ShowInTaskbar = true;
             WindowState = FormWindowState.Normal;
             Activate();
             if (_webView == null || _webView.CoreWebView2 == null)
                 InitializeWebViewAsync();
+            else
+                PollAndPush(true);
         }
 
         private void ExitApplication()
@@ -932,6 +1074,10 @@ namespace PcPowerMonitor
             _allowExit = true;
             _pollTimer.Stop();
             _localApi.Stop();
+            if (_settings.RestoreStockOnExit && _settings.TuningProfile != "stock")
+            {
+                try { _tuner.RestoreStock(); } catch { }
+            }
             _storage.Flush();
             if (_overlayForm != null && !_overlayForm.IsDisposed)
             {
@@ -954,6 +1100,7 @@ namespace PcPowerMonitor
                 e.Cancel = true;
                 Hide();
                 ShowInTaskbar = false;
+                EnterBackgroundEcoMode();
                 if (!_settings.QuietStart)
                 {
                     _trayIcon.ShowBalloonTip(2000, "VoltPulse", "Continuando o monitoramento na bandeja do sistema.", ToolTipIcon.Info);
@@ -962,6 +1109,10 @@ namespace PcPowerMonitor
             }
 
             _localApi.Stop();
+            if (_settings.RestoreStockOnExit && _settings.TuningProfile != "stock")
+            {
+                try { _tuner.RestoreStock(); } catch { }
+            }
             _storage.Flush();
             if (_monitor != null) _monitor.Dispose();
             if (_overlayForm != null && !_overlayForm.IsDisposed) _overlayForm.Close();

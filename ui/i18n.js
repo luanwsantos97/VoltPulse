@@ -38,6 +38,7 @@ window.VOLTPULSE_I18N = {
   "pt-BR": {
     nav_overview: "Dashboard",
     nav_energy: "Energia & Custos",
+    nav_tuning: "Eco & Undervolt",
     nav_thermals: "Temperaturas",
     nav_voltages: "Voltagens",
     nav_disks: "Discos & SSD",
@@ -47,6 +48,7 @@ window.VOLTPULSE_I18N = {
     mini_today: "Hoje",
     title_overview: "Dashboard",
     title_energy: "Energia & Custos",
+    title_tuning: "Eco & Undervolt Seguro",
     title_thermals: "Temperaturas",
     title_voltages: "Voltagens (V)",
     title_disks: "Discos & Saúde do SSD (S.M.A.R.T.)",
@@ -114,6 +116,7 @@ window.VOLTPULSE_I18N = {
   "en-US": {
     nav_overview: "Dashboard",
     nav_energy: "Energy & Costs",
+    nav_tuning: "Safe Eco / Tuning",
     nav_thermals: "Thermals",
     nav_voltages: "Voltages",
     nav_disks: "Disks & SSD",
@@ -123,6 +126,7 @@ window.VOLTPULSE_I18N = {
     mini_today: "Today",
     title_overview: "Dashboard",
     title_energy: "Energy & Costs",
+    title_tuning: "Safe Eco & Thermal Undervolt",
     title_thermals: "Thermals",
     title_voltages: "Voltages (V)",
     title_disks: "Disks & SSD Health (S.M.A.R.T.)",

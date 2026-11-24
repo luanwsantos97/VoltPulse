@@ -43,6 +43,17 @@ namespace PcPowerMonitor
 
             LoadHistory();
             LoadHourlyToday();
+
+            // Garante gravacao segura antes de desligamento, logoff ou suspensao do Windows
+            try
+            {
+                SystemEvents.SessionEnding += (s, e) => Flush();
+                SystemEvents.PowerModeChanged += (s, e) =>
+                {
+                    if (e.Mode == PowerModes.Suspend) Flush();
+                };
+            }
+            catch { }
         }
 
         public AppSettings LoadSettings()
@@ -233,7 +244,8 @@ namespace PcPowerMonitor
                 _dirty = true;
             }
 
-            if ((DateTime.UtcNow - _lastFlush).TotalSeconds >= 20)
+            // Grava no disco a cada 3 minutos (180s) para reduzir em ~90% o desgaste de escritas no SSD
+            if ((DateTime.UtcNow - _lastFlush).TotalSeconds >= 180)
             {
                 Flush();
             }

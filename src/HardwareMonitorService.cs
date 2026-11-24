@@ -189,7 +189,7 @@ namespace PcPowerMonitor
             }
         }
 
-        public TelemetrySnapshot Capture(AppSettings settings, bool paused)
+        public TelemetrySnapshot Capture(AppSettings settings, bool paused, bool backgroundMode = false)
         {
             var now = DateTime.Now;
             var snap = new TelemetrySnapshot
@@ -283,8 +283,9 @@ namespace PcPowerMonitor
                 snap.ActiveNetworkName = activeNet.AdapterName;
             }
 
-            // Saúde e vida útil dos SSDs / Discos (estilo CrystalDiskInfo) — atualiza a cada 15s
-            if ((DateTime.UtcNow - _lastDiskRefreshUtc).TotalSeconds >= 15 || _cachedDisks.Count == 0)
+            // Saúde e vida útil dos SSDs / Discos — 300s (5 min) na bandeja ou 60s com janela aberta (reduz I/O no SSD!)
+            int diskRefreshSec = backgroundMode ? 300 : 60;
+            if ((DateTime.UtcNow - _lastDiskRefreshUtc).TotalSeconds >= diskRefreshSec || _cachedDisks.Count == 0)
             {
                 _cachedDisks = CaptureDiskHealth(lhmStorageSensors);
                 _lastDiskRefreshUtc = DateTime.UtcNow;
@@ -376,8 +377,11 @@ namespace PcPowerMonitor
             // Saúde da bateria (apenas se o PC for notebook com bateria)
             snap.Battery = CaptureBatteryHealth();
 
-            // Top processos consumindo CPU/RAM agora
-            snap.TopProcesses = _processMonitor.CaptureTop(8);
+            // Top processos consumindo CPU/RAM agora (pulado em segundo plano na bandeja para economizar ~80% de CPU!)
+            if (!backgroundMode)
+            {
+                snap.TopProcesses = _processMonitor.CaptureTop(8);
+            }
 
             snap.Voltages = SortReadings(snap.Voltages);
             snap.PowerSensors = SortReadings(snap.PowerSensors);

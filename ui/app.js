@@ -291,6 +291,54 @@
     }
   }
 
+  // Eco & Safe Tuning controls
+  document.querySelectorAll(".profile-card[data-prof]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const prof = btn.dataset.prof;
+      const autoEco = $("chkAutoEcoOutsideGames") ? $("chkAutoEcoOutsideGames").checked : false;
+      sendHost({ action: "applyTuningProfile", profile: prof, autoEco });
+      showToast(`Perfil ${prof.toUpperCase()} aplicado com segurança!`);
+    });
+  });
+
+  if ($("chkAutoEcoOutsideGames")) {
+    $("chkAutoEcoOutsideGames").addEventListener("change", () => {
+      const autoEco = $("chkAutoEcoOutsideGames").checked;
+      const prof = autoEco ? "eco" : ((state.payload && state.payload.Settings && state.payload.Settings.TuningProfile) || "stock");
+      sendHost({ action: "applyTuningProfile", profile: prof, autoEco });
+      showToast(autoEco ? "Modo Eco automático fora de jogos ativado!" : "Modo Eco automático desativado.");
+    });
+  }
+
+  if ($("tunCpuPct")) {
+    $("tunCpuPct").addEventListener("input", () => {
+      $("tunCpuPctLabel").textContent = `${$("tunCpuPct").value}%`;
+    });
+  }
+  if ($("tunGpuPct")) {
+    $("tunGpuPct").addEventListener("input", () => {
+      $("tunGpuPctLabel").textContent = `${$("tunGpuPct").value}%`;
+    });
+  }
+  if ($("btnApplyCustomTuning")) {
+    $("btnApplyCustomTuning").addEventListener("click", () => {
+      sendHost({
+        action: "applyTuningCustom",
+        cpuMaxPercent: parseInt($("tunCpuPct").value, 10) || 99,
+        cpuBoostMode: parseInt($("tunCpuBoost").value, 10),
+        gpuPowerPercent: parseInt($("tunGpuPct").value, 10) || 85,
+        autoEco: $("chkAutoEcoOutsideGames") ? $("chkAutoEcoOutsideGames").checked : false
+      });
+      showToast("Ajuste seguro aplicado!");
+    });
+  }
+  if ($("btnRestoreStock")) {
+    $("btnRestoreStock").addEventListener("click", () => {
+      sendHost({ action: "restoreStockTuning" });
+      showToast("Padrão de fábrica (Stock) restaurado!");
+    });
+  }
+
   // Filters
   $("filterTempCat").addEventListener("change", () => state.payload && renderThermals(state.payload));
   $("filterVoltCat").addEventListener("change", () => state.payload && renderVoltages(state.payload));
@@ -402,7 +450,9 @@
       TrayIconMode: ($("setTrayMode") && $("setTrayMode").value) ? $("setTrayMode").value : "logo",
       LocalApiEnabled: $("setLocalApi") ? $("setLocalApi").checked : false,
       LocalApiPort: $("setApiPort") ? (parseInt($("setApiPort").value, 10) || 48731) : 48731,
-      AutoCheckUpdates: $("setAutoUpdates") ? $("setAutoUpdates").checked : true
+      AutoCheckUpdates: $("setAutoUpdates") ? $("setAutoUpdates").checked : true,
+      RestoreStockOnExit: $("setRestoreStockExit") ? $("setRestoreStockExit").checked : true,
+      UltraLowBackgroundMode: $("setUltraLowBg") ? $("setUltraLowBg").checked : true
     };
     applyTheme(newSettings.Theme);
     applyLanguage(newSettings.Language);
@@ -454,6 +504,8 @@
       if ($("setLocalApi")) $("setLocalApi").checked = !!cfg.LocalApiEnabled;
       if ($("setApiPort")) $("setApiPort").value = cfg.LocalApiPort || 48731;
       if ($("setAutoUpdates")) $("setAutoUpdates").checked = cfg.AutoCheckUpdates !== false;
+      if ($("setRestoreStockExit")) $("setRestoreStockExit").checked = cfg.RestoreStockOnExit !== false;
+      if ($("setUltraLowBg")) $("setUltraLowBg").checked = cfg.UltraLowBackgroundMode !== false;
     }
 
     if ($("apiUrlHint")) {
@@ -605,6 +657,7 @@
     // Overview Power Sensors table
     renderOverviewPower(t);
     renderBattery(t);
+    renderTuning(payload);
     renderSession(payload);
     renderHistoryTable(s, cfg);
     renderThermals(payload);
@@ -1052,6 +1105,65 @@
     }
 
     state.hoverCharts[canvasId] = { type: "hourly", bars: barsMeta };
+  }
+
+  function renderTuning(payload) {
+    const tu = payload.Tuning;
+    if (!tu) return;
+
+    if ($("appMemBadge") && payload.AppMemoryMb) {
+      $("appMemBadge").textContent = `Host RAM: ${fmtNum(payload.AppMemoryMb, 1)} MB`;
+    }
+
+    const labelMap = { stock: "Stock", eco: "Eco", ultra_eco: "Ultra", custom: "Custom" };
+    if ($("navTuningBadge")) {
+      $("navTuningBadge").textContent = labelMap[tu.ActiveProfile] || "Stock";
+    }
+
+    document.querySelectorAll(".profile-card[data-prof]").forEach((c) => {
+      c.classList.toggle("active", c.dataset.prof === tu.ActiveProfile);
+    });
+
+    if ($("chkAutoEcoOutsideGames") && document.activeElement !== $("chkAutoEcoOutsideGames")) {
+      $("chkAutoEcoOutsideGames").checked = !!tu.AutoEcoOutsideGames;
+    }
+
+    if ($("tunCpuPct") && document.activeElement !== $("tunCpuPct")) {
+      $("tunCpuPct").value = tu.CpuMaxPercent || 100;
+      $("tunCpuPctLabel").textContent = `${tu.CpuMaxPercent || 100}%`;
+    }
+    if ($("tunCpuBoost") && document.activeElement !== $("tunCpuBoost")) {
+      $("tunCpuBoost").value = String(tu.CpuBoostMode !== undefined ? tu.CpuBoostMode : 2);
+    }
+
+    if ($("tuningGpuBadge")) {
+      if (tu.HasDedicatedGpu) {
+        $("tuningGpuBadge").textContent = `${tu.DedicatedGpuVendor} Dedicada`;
+        $("tuningGpuBadge").className = "badge badge-ok";
+      } else {
+        $("tuningGpuBadge").textContent = "Sem GPU Dedicada";
+        $("tuningGpuBadge").className = "badge badge-muted";
+      }
+    }
+
+    if ($("tunGpuName")) {
+      $("tunGpuName").textContent = tu.HasDedicatedGpu ? tu.DedicatedGpuName : "Ignorada (Integrada)";
+    }
+    if ($("tunGpuPct")) {
+      $("tunGpuPct").disabled = !tu.GpuPowerLimitSupported;
+      if (document.activeElement !== $("tunGpuPct")) {
+        $("tunGpuPct").value = tu.GpuPowerLimitPercent || 100;
+        $("tunGpuPctLabel").textContent = tu.GpuPowerLimitSupported
+          ? `${tu.GpuPowerLimitPercent || 100}% (${fmtNum(tu.GpuCurrentLimitWatts || tu.GpuDefaultWatts, 0)} W)`
+          : "N/A";
+      }
+    }
+    if ($("tunGpuNote")) {
+      $("tunGpuNote").textContent = tu.SafetyNote || "";
+    }
+    if ($("tunLastMsg") && tu.LastActionMessage) {
+      $("tunLastMsg").textContent = tu.LastActionMessage;
+    }
   }
 
   function renderBattery(t) {
