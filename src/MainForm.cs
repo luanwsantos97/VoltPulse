@@ -17,7 +17,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "4.2.2";
+        public const string AppVersion = "4.2.3";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
@@ -149,6 +149,19 @@ namespace PcPowerMonitor
         private const int HTCAPTION = 0x2;
         private const int WM_NCHITTEST = 0x84;
         private const int WM_GETMINMAXINFO = 0x24;
+        private const int WS_MINIMIZEBOX = 0x00020000;
+        private const int CS_DBLCLKS = 0x0008;
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                cp.Style |= WS_MINIMIZEBOX;
+                cp.ClassStyle |= CS_DBLCLKS;
+                return cp;
+            }
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT { public int X; public int Y; }
