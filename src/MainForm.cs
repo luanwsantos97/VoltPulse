@@ -17,7 +17,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "4.3.0";
+        public const string AppVersion = "1.0.0";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
@@ -825,6 +825,18 @@ namespace PcPowerMonitor
                         PollAndPush(true);
                         break;
 
+                    case "applySmartOptimize":
+                        HandleSmartOptimize(msg);
+                        break;
+
+                    case "toggleLocalApi":
+                        _settings.LocalApiEnabled = !_settings.LocalApiEnabled;
+                        if (_settings.LocalApiEnabled) _localApi.Start(_settings.LocalApiPort);
+                        else _localApi.Stop();
+                        _storage.SaveSettings(_settings);
+                        PollAndPush(true);
+                        break;
+
                     case "openUrl":
                         if (msg.ContainsKey("url"))
                         {
@@ -840,6 +852,79 @@ namespace PcPowerMonitor
                 }
             }
             catch { }
+        }
+
+        private void HandleSmartOptimize(Dictionary<string, object> msg)
+        {
+            var items = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (msg.ContainsKey("items") && msg["items"] is object[])
+            {
+                foreach (var o in (object[])msg["items"])
+                {
+                    string s = Convert.ToString(o);
+                    if (!string.IsNullOrWhiteSpace(s)) items.Add(s.Trim());
+                }
+            }
+            else if (msg.ContainsKey("items") && msg["items"] is System.Collections.ArrayList)
+            {
+                foreach (var o in (System.Collections.ArrayList)msg["items"])
+                {
+                    string s = Convert.ToString(o);
+                    if (!string.IsNullOrWhiteSpace(s)) items.Add(s.Trim());
+                }
+            }
+
+            if (items.Count == 0) return;
+
+            bool wantEcoProfile = items.Contains("eco_profile");
+            if (items.Contains("auto_eco_games"))
+            {
+                _settings.AutoEcoOutsideGames = true;
+                wantEcoProfile = true;
+            }
+            if (items.Contains("idle_afk"))
+            {
+                _settings.AutoIdleEco = true;
+                if (_settings.AutoIdleMinutes < 2) _settings.AutoIdleMinutes = 10;
+            }
+            if (items.Contains("thermal_guard"))
+            {
+                _settings.ThermalGuardEnabled = true;
+                if (_settings.ThermalGuardLimitC < 65 || _settings.ThermalGuardLimitC > 100)
+                    _settings.ThermalGuardLimitC = 85.0;
+            }
+            if (items.Contains("ultra_low_bg"))
+            {
+                _settings.UltraLowBackgroundMode = true;
+                _settings.MinimizeToTrayOnClose = true;
+            }
+            if (items.Contains("auto_game"))
+            {
+                _settings.AutoGameMode = true;
+            }
+            if (items.Contains("restore_stock_exit"))
+            {
+                _settings.RestoreStockOnExit = true;
+            }
+            if (items.Contains("pcie_aspm"))
+            {
+                _settings.CustomPcieAspmEco = true;
+                if (_settings.TuningProfile == "custom")
+                    ApplyConfiguredEcoOrCustom("smart_opt");
+            }
+
+            if (wantEcoProfile && !_lastGameMode.Active)
+            {
+                if (_settings.TuningProfile == "stock" || string.IsNullOrEmpty(_settings.TuningProfile))
+                    _settings.TuningProfile = "eco";
+                _idleEcoActive = false;
+                _thermalGuardActive = false;
+                _tuner.SetAutomationFlags(false, false, "manual");
+                ApplyConfiguredEcoOrCustom("manual");
+            }
+
+            _storage.SaveSettings(_settings);
+            PollAndPush(true);
         }
 
         private void HandleSaveSettings(Dictionary<string, object> msg)
@@ -865,6 +950,7 @@ namespace PcPowerMonitor
             _settings.MinimizeToTrayOnClose = ReadBool(sDict, "MinimizeToTrayOnClose", _settings.MinimizeToTrayOnClose);
             _settings.StartWithWindows = ReadBool(sDict, "StartWithWindows", _settings.StartWithWindows);
             _settings.Theme = AppSettings.NormalizeTheme(ReadString(sDict, "Theme", _settings.Theme));
+            _settings.StartView = AppSettings.NormalizeStartView(ReadString(sDict, "StartView", _settings.StartView));
             _settings.Language = AppSettings.NormalizeLanguage(ReadString(sDict, "Language", _settings.Language));
             _settings.EnableAlerts = ReadBool(sDict, "EnableAlerts", _settings.EnableAlerts);
             _settings.MonthlyBudgetAlert = ReadDouble(sDict, "MonthlyBudgetAlert", _settings.MonthlyBudgetAlert, 0.0, 1000000.0);

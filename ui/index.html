@@ -38,7 +38,7 @@
       <div class="titlebar-drag" id="titlebarDrag">
         <span class="titlebar-dot">⚡</span>
         <span class="titlebar-text">VoltPulse</span>
-        <span class="titlebar-ver" id="titlebarVer">v4.0.0</span>
+        <span class="titlebar-ver" id="titlebarVer">v1.0.0</span>
         <span class="titlebar-pill game hidden" id="titlebarGameBadge">🎮 Modo Jogo</span>
         <button class="titlebar-pill update hidden" id="titlebarUpdateBtn">↑ Nova versão disponível</button>
       </div>
@@ -56,11 +56,11 @@
     </div>
 
     <div class="app-shell">
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR SLIM (Estilo Driver Booster × VoltPulse) -->
     <aside class="sidebar">
-      <div class="brand">
+      <div class="brand-slim" title="VoltPulse">
         <div class="brand-logo">
-          <svg viewBox="0 0 32 32" width="24" height="24" fill="none">
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none">
             <path d="M18.5 3L7 17.5h8L13.5 29 25 14.5h-8L18.5 3z" fill="url(#vpGrad)" />
             <defs>
               <linearGradient id="vpGrad" x1="7" y1="3" x2="25" y2="29" gradientUnits="userSpaceOnUse">
@@ -70,91 +70,81 @@
             </defs>
           </svg>
         </div>
-        <div>
-          <div class="brand-name">VoltPulse</div>
-          <div class="brand-sub">Telemetry &amp; Power <span id="appVersionBadge">v2.0</span></div>
-        </div>
+        <div class="brand-ver" id="appVersionBadge">v1.0.0</div>
       </div>
 
-      <nav class="nav">
-        <button class="nav-item active" data-view="overview">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-          <span data-i18n="nav_overview">Dashboard</span>
+      <nav class="nav-slim">
+        <button class="nav-tile active" data-nav="scan" data-view="scan">
+          <span class="nav-tile-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+              <path d="M12 3a9 9 0 0 1 7.79 4.5"/><path d="M19.79 16.5A9 9 0 0 1 4.21 16.5"/><path d="M4.21 7.5A9 9 0 0 1 12 3"/>
+              <circle cx="12" cy="12" r="3.2"/>
+            </svg>
+          </span>
+          <span class="nav-tile-lbl">Verificar</span>
         </button>
-        <button class="nav-item" data-view="energy">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          <span data-i18n="nav_energy">Energia &amp; Custos</span>
-          <span class="nav-pill hidden" id="navSessionPill">REC</span>
+
+        <button class="nav-tile" data-nav="monitor" data-view="overview">
+          <span class="nav-tile-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            <span class="tile-badge" id="navTempBadge">--°</span>
+          </span>
+          <span class="nav-tile-lbl">Monitor</span>
         </button>
-        <button class="nav-item" data-view="tuning">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span data-i18n="nav_tuning">Eco &amp; Undervolt</span>
-          <span class="nav-pill" id="navTuningBadge">Stock</span>
+
+        <button class="nav-tile" data-nav="tuning" data-view="tuning">
+          <span class="nav-tile-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9.5 12.5l1.8 1.8 3.6-4.2"/></svg>
+            <span class="tile-badge eco" id="navTuningBadge">Stock</span>
+          </span>
+          <span class="nav-tile-lbl">Otimizar</span>
         </button>
-        <button class="nav-item" data-view="thermals">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
-          <span data-i18n="nav_thermals">Temperaturas</span>
-          <span class="nav-pill" id="navTempBadge">--°</span>
+
+        <button class="nav-tile" data-nav="tools" data-view="tools">
+          <span class="nav-tile-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="12" x2="12" y2="15"/><line x1="10.5" y1="13.5" x2="13.5" y2="13.5"/></svg>
+            <span class="tile-badge rec hidden" id="navSessionPill">REC</span>
+          </span>
+          <span class="nav-tile-lbl">Ferramentas</span>
         </button>
-        <button class="nav-item" data-view="voltages">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          <span data-i18n="nav_voltages">Voltagens</span>
-          <span class="nav-pill" id="navVoltCount">0</span>
-        </button>
-        <button class="nav-item" data-view="disks">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="14" x2="22" y2="14"/><circle cx="7" cy="17" r="1"/><circle cx="11" cy="17" r="1"/></svg>
-          <span data-i18n="nav_disks">Discos &amp; SSD</span>
-          <span class="nav-pill" id="navDiskHealth">--%</span>
-        </button>
-        <button class="nav-item" data-view="system">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
-          <span data-i18n="nav_system">Sistema &amp; Rede</span>
-        </button>
-        <button class="nav-item" data-view="settings">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span data-i18n="nav_settings">Configurações</span>
+
+        <button class="nav-tile" data-nav="settings" data-view="settings">
+          <span class="nav-tile-icon">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
+          <span class="nav-tile-lbl">Ajustes</span>
         </button>
       </nav>
 
-      <!-- MINI LIVE WIDGET -->
-      <div class="sidebar-footer">
-        <div class="mini-telemetry">
-          <div class="mini-row">
-            <span class="mini-label" data-i18n="mini_wall">Tomada</span>
-            <span class="mini-val cyan" id="sideWatts">-- W</span>
-          </div>
-          <div class="mini-row">
-            <span class="mini-label">CPU / GPU</span>
-            <span class="mini-val" id="sideTemps">--° / --°</span>
-          </div>
-          <div class="mini-row">
-            <span class="mini-label" data-i18n="mini_today">Hoje</span>
-            <span class="mini-val green" id="sideToday">--</span>
-          </div>
+      <!-- MINI LIVE TELEMETRY (Compact Slim Footer) -->
+      <div class="sidebar-footer slim">
+        <div class="mini-telemetry slim" data-goto="overview" title="Abrir Monitor ao Vivo">
+          <div class="slim-watts cyan" id="sideWatts">-- W</div>
+          <div class="slim-meta" id="sideTemps">--° / --°</div>
+          <div class="slim-cost green" id="sideToday">--</div>
         </div>
 
-        <div class="sidebar-actions">
-          <button id="btnPause" class="icon-action-btn" title="Pausar/Retomar leitura">
+        <div class="sidebar-actions slim">
+          <button id="btnPause" class="icon-action-btn square" title="Pausar/Retomar leitura">
             <span class="status-dot live" id="liveDot"></span>
-            <span id="btnPauseText">Ao vivo</span>
+            <span id="btnPauseText" class="sr-only">Ao vivo</span>
           </button>
-          <button id="btnOverlayToggle" class="icon-action-btn square" title="Mini Widget Flutuante (Overlay)">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="11" y="7" width="8" height="5" rx="1"/></svg>
+          <button id="btnOverlayToggle" class="icon-action-btn square" title="Mini Widget Flutuante (Overlay + FPS)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="11" y="7" width="8" height="5" rx="1"/></svg>
           </button>
-          <button id="btnLangToggle" class="icon-action-btn square" title="Português / English" style="font-size:11px;font-weight:700">PT</button>
-          <button id="btnThemeToggle" class="icon-action-btn square" title="Alternar tema Claro/Escuro">
-            <svg id="themeIcon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <button id="btnThemeToggle" class="icon-action-btn square" title="Alternar Tema">
+            <svg id="themeIcon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
         </div>
       </div>
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="main">
+    <main class="main" id="mainScroll">
       <!-- TOPBAR -->
-      <header class="topbar">
+      <header class="topbar" id="mainTopbar">
         <div>
-          <h1 class="page-title" id="pageTitle">Dashboard</h1>
+          <h1 class="page-title" id="pageTitle">Verificar</h1>
           <div class="hw-strip" id="hwStrip">Detectando componentes do PC...</div>
         </div>
         <div class="topbar-right">
@@ -163,14 +153,146 @@
         </div>
       </header>
 
+      <!-- SUB-ABAS DO MONITOR (aparece nas telas de telemetria detalhada) -->
+      <div class="monitor-subnav hidden" id="monitorSubnav">
+        <button class="subtab-btn active" data-view="overview">📊 Visão Geral</button>
+        <button class="subtab-btn" data-view="energy">⚡ Energia &amp; Custos</button>
+        <button class="subtab-btn" data-view="thermals">🌡️ Temperaturas</button>
+        <button class="subtab-btn" data-view="voltages">📈 Voltagens <span class="subtab-pill" id="navVoltCount">0</span></button>
+        <button class="subtab-btn" data-view="disks">💾 Discos &amp; SSD <span class="subtab-pill" id="navDiskHealth">--%</span></button>
+        <button class="subtab-btn" data-view="system">🌐 Sistema &amp; Rede</button>
+      </div>
+
       <!-- ALERTS BANNER (admin / PawnIO) -->
       <div id="alertBanner" class="alert-banner hidden">
         <div class="alert-banner-text" id="alertBannerText"></div>
         <button class="btn btn-sm btn-accent" id="alertBannerAction"></button>
       </div>
 
+      <!-- VIEW 0: VERIFICAR (Tela Hero Estilo Driver Booster × VoltPulse) -->
+      <section class="view active" id="view-scan">
+        <div class="scan-stage" id="scanHeroStage">
+          <!-- Pílula de Status Superior -->
+          <div class="scan-status-pill" id="scanBannerPill">
+            <span class="scan-pill-ico" id="scanBannerIco">i</span>
+            <span id="scanBannerText">Verifique para analisar consumo, eficiência, temperaturas e saúde do seu PC!</span>
+          </div>
+
+          <!-- Grande Botão Circular Animado (Estilo Driver Booster) -->
+          <div class="scan-orb-wrap">
+            <button type="button" class="scan-orb" id="btnRunScan" title="Clique para iniciar a verificação inteligente">
+              <svg class="scan-orb-svg" viewBox="0 0 240 240">
+                <defs>
+                  <linearGradient id="scanRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#38BDF8"/>
+                    <stop offset="100%" stop-color="#34D399"/>
+                  </linearGradient>
+                  <linearGradient id="scanRingWarn" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#F59E0B"/>
+                    <stop offset="100%" stop-color="#FB7185"/>
+                  </linearGradient>
+                </defs>
+                <!-- Anel de fundo -->
+                <circle cx="120" cy="120" r="106" fill="none" stroke="rgba(148,163,184,0.12)" stroke-width="10"/>
+                <!-- Marcações radiais internas de precisão -->
+                <circle cx="120" cy="120" r="88" fill="none" stroke="rgba(148,163,184,0.22)" stroke-width="6" stroke-dasharray="2 7.2"/>
+                <!-- 3 Arcos segmentados principais (rotacionam durante a verificação) -->
+                <g class="scan-arcs" id="scanArcsGroup">
+                  <circle cx="120" cy="120" r="100" fill="none" stroke="url(#scanRingGrad)" stroke-width="9" stroke-linecap="round" stroke-dasharray="185 443" stroke-dashoffset="0"/>
+                  <circle cx="120" cy="120" r="100" fill="none" stroke="url(#scanRingGrad)" stroke-width="9" stroke-linecap="round" stroke-dasharray="185 443" stroke-dashoffset="-209"/>
+                  <circle cx="120" cy="120" r="100" fill="none" stroke="url(#scanRingGrad)" stroke-width="9" stroke-linecap="round" stroke-dasharray="185 443" stroke-dashoffset="-418"/>
+                </g>
+              </svg>
+              <div class="scan-orb-core">
+                <span class="scan-orb-label" id="scanOrbLabel">VERIFICAR</span>
+                <span class="scan-orb-sub" id="scanOrbSub">-- W • --°C</span>
+              </div>
+            </button>
+            <div class="scan-step-caption" id="scanStepCaption">Análise 100% segura • Energia, Eco, Temperaturas &amp; SSD</div>
+          </div>
+
+          <!-- Resumo Ao Vivo Discreto na Base -->
+          <div class="scan-quick-strip">
+            <button type="button" class="scan-qchip" data-goto="overview">
+              <span class="qchip-lbl">Tomada</span>
+              <strong class="cyan" id="scanQWatts">-- W</strong>
+            </button>
+            <button type="button" class="scan-qchip" data-goto="thermals">
+              <span class="qchip-lbl">CPU / GPU</span>
+              <strong id="scanQTemps">--° / --°</strong>
+            </button>
+            <button type="button" class="scan-qchip" data-goto="disks">
+              <span class="qchip-lbl">Saúde SSD</span>
+              <strong class="green" id="scanQDisk">--%</strong>
+            </button>
+            <button type="button" class="scan-qchip" data-goto="tuning">
+              <span class="qchip-lbl">Perfil Eco</span>
+              <strong class="purple" id="scanQProfile">Stock</strong>
+            </button>
+          </div>
+
+          <!-- Barra Flutuante Direita de Hardware (Estilo Driver Booster) -->
+          <div class="hw-dock" id="hwDock">
+            <button type="button" class="hw-dock-btn" data-goto="overview" id="dockSys" title="Consumo &amp; Sistema">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </button>
+            <button type="button" class="hw-dock-btn" data-goto="settings" id="dockWin" title="Windows Admin &amp; PawnIO">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+            </button>
+            <button type="button" class="hw-dock-btn" data-goto="thermals" id="dockCpu" title="Processador (CPU)">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="5"/><line x1="15" y1="1" x2="15" y2="5"/><line x1="9" y1="19" x2="9" y2="23"/><line x1="15" y1="19" x2="15" y2="23"/></svg>
+            </button>
+            <button type="button" class="hw-dock-btn" data-goto="tuning" id="dockGpu" title="Placa de Vídeo (GPU)">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="9" cy="12" r="2.5"/><circle cx="16" cy="12" r="2.5"/></svg>
+            </button>
+            <button type="button" class="hw-dock-btn" data-goto="system" id="dockRam" title="Memória RAM">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="2" y="7" width="20" height="10" rx="1.5"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/></svg>
+            </button>
+            <button type="button" class="hw-dock-btn" data-goto="disks" id="dockSsd" title="SSD &amp; Armazenamento">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="14" x2="22" y2="14"/><circle cx="7" cy="17" r="1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Resultado da Verificação & Recomendações em 1 Clique -->
+        <div class="scan-results hidden" id="scanResultsStage">
+          <div class="card scan-res-hero">
+            <div class="scan-score-ring">
+              <svg viewBox="0 0 100 100" width="84" height="84">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(148,163,184,0.16)" stroke-width="8"/>
+                <circle id="scanScoreArc" cx="50" cy="50" r="42" fill="none" stroke="#34D399" stroke-width="8" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264" transform="rotate(-90 50 50)"/>
+              </svg>
+              <div class="scan-score-num">
+                <strong id="scanScoreVal">--</strong>
+                <span>NOTA</span>
+              </div>
+            </div>
+            <div class="scan-res-info">
+              <h2 id="scanResTitle">Verificação concluída</h2>
+              <p id="scanResSub">Analisamos seu consumo, eficiência Eco, temperaturas e saúde dos SSDs.</p>
+              <div class="scan-ok-strip" id="scanOkStrip"></div>
+            </div>
+            <div class="scan-res-actions">
+              <button type="button" class="btn btn-primary" id="btnApplyAllRecs">⚡ Otimizar Selecionados</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btnRescan">↻ Verificar Novamente</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title" id="scanListHeading">Sugestões para Menor Consumo &amp; Melhor Proteção</div>
+                <div class="card-sub">Todas as otimizações usam exclusivamente APIs oficiais do Windows e drivers certificados (100% reversíveis)</div>
+              </div>
+              <span class="badge badge-ok" id="scanRecCountBadge">0 sugestões</span>
+            </div>
+            <div class="scan-recs-list" id="scanRecsList"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- VIEW 1: OVERVIEW -->
-      <section class="view active" id="view-overview">
+      <section class="view" id="view-overview">
         <!-- 4 KPI Cards -->
         <div class="kpi-grid">
           <div class="kpi-card accent-cyan">
@@ -831,6 +953,89 @@
         </div>
       </section>
 
+      <!-- VIEW 5B: FERRAMENTAS (Toolbox Estilo Driver Booster) -->
+      <section class="view" id="view-tools">
+        <div class="tools-grid">
+          <div class="card tool-card">
+            <div class="tool-ico cyan">📌</div>
+            <div class="tool-body">
+              <div class="tool-head">
+                <strong>Mini Widget Flutuante (HUD + FPS)</strong>
+                <span class="badge badge-muted" id="toolOverlayStatus">Desativado</span>
+              </div>
+              <p>Barra compacta sempre no topo com FPS seguro (ETW), Watts, CPU, GPU e RAM. Clique direito no widget para alternar <strong>Vertical</strong>, <strong>Auto-ocultar</strong> ou <strong>Transparência</strong>.</p>
+              <button type="button" class="btn btn-primary btn-sm" id="btnToolOverlay">Ativar / Ocultar Mini Widget</button>
+            </div>
+          </div>
+
+          <div class="card tool-card">
+            <div class="tool-ico green">🎮</div>
+            <div class="tool-body">
+              <div class="tool-head">
+                <strong>Medidor de Sessão / Jogo</strong>
+                <span class="badge badge-muted" id="toolSessStatus">Parado</span>
+              </div>
+              <p>Calcule exatamente quanto uma partida, renderização ou turno de trabalho custou em Reais, kWh e pico térmico.</p>
+              <button type="button" class="btn btn-ghost btn-sm" data-goto="energy">Abrir Medidor →</button>
+            </div>
+          </div>
+
+          <div class="card tool-card">
+            <div class="tool-ico amber">🧮</div>
+            <div class="tool-body">
+              <div class="tool-head">
+                <strong>Simulador de Conta de Luz</strong>
+                <span class="badge badge-ok" id="toolTariffBadge">-- /kWh</span>
+              </div>
+              <p>Simule quantos Reais seu PC gasta por dia, semana e mês ajustando horas de uso e potência média.</p>
+              <button type="button" class="btn btn-ghost btn-sm" data-goto="energy">Abrir Simulador →</button>
+            </div>
+          </div>
+
+          <div class="card tool-card">
+            <div class="tool-ico purple">📊</div>
+            <div class="tool-body">
+              <div class="tool-head">
+                <strong>Exportar Histórico (CSV)</strong>
+                <span class="badge badge-muted">Excel / Planilhas</span>
+              </div>
+              <p>Exporte todos os registros diários de consumo em kWh, custo, média e pico de Watts para abrir no Excel.</p>
+              <div class="btn-group">
+                <button type="button" class="btn btn-ghost btn-sm" id="btnToolExportCsv">Exportar CSV</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="btnToolOpenFolder">Abrir Pasta</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card tool-card">
+            <div class="tool-ico cyan">🔌</div>
+            <div class="tool-body">
+              <div class="tool-head">
+                <strong>API JSON Local</strong>
+                <span class="badge badge-muted" id="toolApiStatus">Desativada</span>
+              </div>
+              <p>Integre a telemetria ao vivo do VoltPulse (Watts, Temps, FPS) com <strong>Home Assistant</strong> ou <strong>Stream Deck</strong>.</p>
+              <button type="button" class="btn btn-ghost btn-sm" id="btnToolToggleApi">Ativar / Desativar API</button>
+            </div>
+          </div>
+
+          <div class="card tool-card">
+            <div class="tool-ico green">🩺</div>
+            <div class="tool-body">
+              <div class="tool-head">
+                <strong>Diagnóstico, PawnIO &amp; Atualizações</strong>
+                <span class="badge badge-ok" id="toolPawnStatus">Verificando</span>
+              </div>
+              <p>Confira privilégios de Administrador, driver assinado PawnIO e busque novas versões oficiais no GitHub.</p>
+              <div class="btn-group">
+                <button type="button" class="btn btn-primary btn-sm" id="btnToolCheckUpd">🔄 Verificar Atualizações</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="btnToolInstallDeps">Verificar PawnIO</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- VIEW 6: SETTINGS -->
       <section class="view" id="view-settings">
         <div class="settings-grid">
@@ -927,6 +1132,14 @@
                   <option value="emerald">Forest Emerald</option>
                   <option value="amber">Sunset Carbon</option>
                   <option value="light">Clean Light</option>
+                </select>
+              </label>
+
+              <label class="form-field" style="grid-column:span 1">
+                <span>Tela inicial ao abrir</span>
+                <select id="setStartView" class="select-input full">
+                  <option value="scan">🔍 Verificar (Recomendado)</option>
+                  <option value="monitor">📊 Monitor (Dashboard)</option>
                 </select>
               </label>
 

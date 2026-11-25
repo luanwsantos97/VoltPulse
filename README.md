@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-4.2.0-10b981?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-1.0.0-10b981?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/License-MIT-a78bfa?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/Languages-8%20Locales-f59e0b?style=for-the-badge" alt="Languages" />
   <img src="https://img.shields.io/badge/PRs-Welcome-38bdf8?style=for-the-badge" alt="PRs Welcome" />
@@ -37,11 +37,11 @@
 
 ## 📸 Screenshots
 
-| Real-Time Dashboard | Safe Eco & Thermal Undervolt |
+| 1-Click Smart Verify & Optimize Hub | Real-Time Dashboard |
 | :---: | :---: |
-| ![VoltPulse Dashboard](assets/screenshots/dashboard.jpg) | ![VoltPulse Eco & Undervolt](assets/screenshots/eco-undervolt.jpg) |
-| **Live Temperatures** | **SSD / NVMe S.M.A.R.T. Health** |
-| ![VoltPulse Thermals](assets/screenshots/thermals.png) | ![VoltPulse SSD Health](assets/screenshots/ssd-health.png) |
+| ![VoltPulse Smart Verify](assets/screenshots/verify-hub.png) | ![VoltPulse Dashboard](assets/screenshots/dashboard.jpg) |
+| **Safe Eco & Thermal Undervolt** | **SSD / NVMe S.M.A.R.T. Health** |
+| ![VoltPulse Eco & Undervolt](assets/screenshots/eco-undervolt.jpg) | ![VoltPulse SSD Health](assets/screenshots/ssd-health.png) |
 
 ---
 

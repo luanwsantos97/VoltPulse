@@ -32,7 +32,11 @@
   });
 
   const state = {
-    view: "overview",
+    view: "scan",
+    lastMonitorView: "overview",
+    initialViewApplied: false,
+    scanning: false,
+    scanCompleted: false,
     lang: "pt-BR",
     payload: null,
     settingsLoaded: false,
@@ -151,20 +155,60 @@
     t._timer = setTimeout(() => t.classList.add("hidden"), 2600);
   }
 
-  // Navigation
+  const MONITOR_VIEWS = new Set(["overview", "energy", "thermals", "voltages", "disks", "system"]);
+  const VIEW_TITLES = {
+    scan: "Verificar",
+    overview: "Monitor • Visão Geral",
+    energy: "Monitor • Energia & Custos",
+    thermals: "Monitor • Temperaturas",
+    voltages: "Monitor • Voltagens",
+    disks: "Monitor • Discos & SSD",
+    system: "Monitor • Sistema & Rede",
+    tuning: "Otimizar (Eco & Undervolt)",
+    tools: "Ferramentas",
+    settings: "Ajustes & Configurações"
+  };
+
+  // Navigation (Sidebar Slim + Monitor Sub-tabs)
   function switchView(view) {
     state.view = view;
-    document.querySelectorAll(".nav-item").forEach((b) => {
+    if (MONITOR_VIEWS.has(view)) state.lastMonitorView = view;
+
+    const activeNavGroup = MONITOR_VIEWS.has(view) ? "monitor" : view;
+    document.querySelectorAll(".nav-tile").forEach((b) => {
+      b.classList.toggle("active", b.dataset.nav === activeNavGroup);
+    });
+    document.querySelectorAll(".subtab-btn").forEach((b) => {
       b.classList.toggle("active", b.dataset.view === view);
     });
     document.querySelectorAll(".view").forEach((s) => {
       s.classList.toggle("active", s.id === `view-${view}`);
     });
-    $("pageTitle").textContent = tr("title_" + view);
+
+    if ($("monitorSubnav")) {
+      $("monitorSubnav").classList.toggle("hidden", !MONITOR_VIEWS.has(view));
+    }
+    if ($("mainTopbar")) {
+      $("mainTopbar").classList.toggle("hidden", view === "scan" && !state.scanCompleted);
+    }
+
+    const customTitle = VIEW_TITLES[view];
+    const i18nTitle = tr("title_" + view);
+    $("pageTitle").textContent = customTitle || (i18nTitle !== "title_" + view ? i18nTitle : view);
     requestAnimationFrame(() => redrawAllCharts());
   }
 
-  document.querySelectorAll(".nav-item").forEach((btn) => {
+  document.querySelectorAll(".nav-tile").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.nav === "monitor") {
+        switchView(state.lastMonitorView || "overview");
+      } else {
+        switchView(btn.dataset.view);
+      }
+    });
+  });
+
+  document.querySelectorAll(".subtab-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
@@ -243,6 +287,388 @@
       sendHost({ action: "installUpdate" });
     });
   }
+  if ($("btnToolOverlay")) $("btnToolOverlay").addEventListener("click", () => sendHost({ action: "toggleOverlay" }));
+  if ($("btnToolExportCsv")) $("btnToolExportCsv").addEventListener("click", () => sendHost({ action: "exportCsv" }));
+  if ($("btnToolOpenFolder")) $("btnToolOpenFolder").addEventListener("click", () => sendHost({ action: "openDataDir" }));
+  if ($("btnToolToggleApi")) $("btnToolToggleApi").addEventListener("click", () => sendHost({ action: "toggleLocalApi" }));
+  if ($("btnToolCheckUpd")) $("btnToolCheckUpd").addEventListener("click", () => { showToast("Verificando atualizações no GitHub..."); sendHost({ action: "checkUpdates" }); });
+  if ($("btnToolInstallDeps")) $("btnToolInstallDeps").addEventListener("click", () => sendHost({ action: "installDeps" }));
+
+  // ==================== MOTOR DA TELA VERIFICAR (DRIVER BOOSTER × VOLTPULSE) ====================
+  function buildScanDiagnostics(payload) {
+    const t = payload.Telemetry || {};
+    const cfg = payload.Settings || {};
+    const tu = payload.Tuning || {};
+    const gm = payload.GameMode || {};
+    const recs = [];
+    const oks = [];
+    let score = 100;
+
+    if (!t.IsAdmin) {
+      score -= 15;
+      recs.push({
+        id: "action_admin",
+        kind: "action",
+        icon: "🔐",
+        tone: "warn",
+        title: "Executar em Modo Administrador",
+        desc: "Libera leitura completa da CPU, voltagens da placa-mãe, SSD e contador de FPS seguro.",
+        impact: "Essencial",
+        impactCls: "warn",
+        btnLabel: "Reiniciar Admin"
+      });
+    } else {
+      oks.push("✓ Modo Admin");
+    }
+
+    if (!t.PawnIoInstalled) {
+      score -= 10;
+      recs.push({
+        id: "action_pawnio",
+        kind: "action",
+        icon: "🧩",
+        tone: "warn",
+        title: "Instalar Driver Assinado PawnIO",
+        desc: "Necessário para leitura precisa de temperatura, VCore e consumo (Watts) da CPU.",
+        impact: "Sensores",
+        impactCls: "warn",
+        btnLabel: "Instalar"
+      });
+    } else {
+      oks.push("✓ Driver PawnIO");
+    }
+
+    if (tu.ActiveProfile === "stock" && !gm.Active) {
+      score -= 18;
+      recs.push({
+        id: "eco_profile",
+        kind: "auto",
+        checked: true,
+        icon: "🌿",
+        tone: "green",
+        title: "Ativar Perfil Eco Inteligente (CPU EPP + GPU -15%)",
+        desc: "Reduz picos de voltagem, temperatura em até 15 °C e 25–35% do consumo no dia a dia mantendo alta fluidez.",
+        impact: "-25% a 35% W",
+        impactCls: ""
+      });
+    } else {
+      oks.push(`✓ Perfil ${String(tu.ActiveProfile || "eco").toUpperCase()}`);
+    }
+
+    if (!cfg.AutoEcoOutsideGames) {
+      score -= 12;
+      recs.push({
+        id: "auto_eco_games",
+        kind: "auto",
+        checked: true,
+        icon: "🎮",
+        tone: "green",
+        title: "Ativar \"Eco fora de Jogos\" Automático",
+        desc: "Mantém o PC economizando energia no uso normal e libera 100% Stock automaticamente ao abrir um jogo.",
+        impact: "Automático",
+        impactCls: "cyan"
+      });
+    } else {
+      oks.push("✓ Eco fora de Jogos");
+    }
+
+    if (!cfg.AutoIdleEco) {
+      score -= 8;
+      recs.push({
+        id: "idle_afk",
+        kind: "auto",
+        checked: true,
+        icon: "💤",
+        tone: "green",
+        title: "Ativar Modo Idle (AFK) após 10 minutos",
+        desc: "Entra em Ultra Silencioso quando você sai da cadeira e restaura instantaneamente ao mexer no mouse.",
+        impact: "Economia AFK",
+        impactCls: ""
+      });
+    } else {
+      oks.push("✓ Modo Idle AFK");
+    }
+
+    if (!cfg.ThermalGuardEnabled) {
+      score -= 10;
+      recs.push({
+        id: "thermal_guard",
+        kind: "auto",
+        checked: true,
+        icon: "🔥",
+        tone: "warn",
+        title: "Ativar Proteção Térmica (Thermal Guard 85 °C)",
+        desc: "Reduz automaticamente a potência caso CPU ou GPU ultrapassem o limite seguro por 15s.",
+        impact: "Proteção",
+        impactCls: "warn"
+      });
+    } else {
+      oks.push("✓ Thermal Guard");
+    }
+
+    if (!cfg.UltraLowBackgroundMode || !cfg.MinimizeToTrayOnClose) {
+      score -= 8;
+      recs.push({
+        id: "ultra_low_bg",
+        kind: "auto",
+        checked: true,
+        icon: "🍃",
+        tone: "green",
+        title: "Ativar Modo Ultra-Leve na Bandeja (-90% escritas SSD)",
+        desc: "Congela o WebView2 ao fechar no X, aplica EcoQoS e reduz drasticamente escritas no SSD.",
+        impact: "-90% SSD I/O",
+        impactCls: "cyan"
+      });
+    } else {
+      oks.push("✓ Ultra-Leve na Bandeja");
+    }
+
+    if (!cfg.AutoGameMode) {
+      score -= 5;
+      recs.push({
+        id: "auto_game",
+        kind: "auto",
+        checked: true,
+        icon: "🕹️",
+        tone: "",
+        title: "Ativar Detecção Automática de Jogos & FPS Seguro",
+        desc: "Mede o custo real de cada partida e habilita o contador de FPS seguro (ETW) no Mini Widget.",
+        impact: "Gaming",
+        impactCls: "cyan"
+      });
+    }
+
+    if (!cfg.RestoreStockOnExit) {
+      score -= 4;
+      recs.push({
+        id: "restore_stock_exit",
+        kind: "auto",
+        checked: true,
+        icon: "🛡️",
+        tone: "",
+        title: "Restaurar Padrão de Fábrica (Stock) ao Sair",
+        desc: "Garante que todas as políticas de energia voltem ao padrão original ao encerrar o VoltPulse.",
+        impact: "Segurança",
+        impactCls: ""
+      });
+    }
+
+    // Diagnósticos térmicos e de SSD
+    const maxT = Math.max(t.CpuTempC || 0, t.GpuTempC || 0);
+    if (maxT >= (cfg.TempWarningC || 75)) {
+      score -= 10;
+      recs.push({
+        id: "goto_thermals",
+        kind: "nav",
+        target: "thermals",
+        icon: "🌡️",
+        tone: "warn",
+        title: `Temperatura elevada detectada (${fmtNum(maxT, 0)} °C)`,
+        desc: "Verifique os sensores térmicos, ventilação do gabinete ou ative o perfil Eco Inteligente.",
+        impact: "Atenção",
+        impactCls: "warn",
+        btnLabel: "Ver Temperaturas"
+      });
+    } else if (maxT > 0) {
+      oks.push(`✓ Temps ${fmtNum(t.CpuTempC || 0, 0)}°/${fmtNum(t.GpuTempC || 0, 0)}°`);
+    }
+
+    if (t.MinDiskHealthPercent !== null && t.MinDiskHealthPercent !== undefined) {
+      if (t.MinDiskHealthPercent < 30) {
+        score -= 12;
+        recs.push({
+          id: "goto_disks",
+          kind: "nav",
+          target: "disks",
+          icon: "💾",
+          tone: "warn",
+          title: `Saúde do SSD baixa (${t.MinDiskHealthPercent}%)`,
+          desc: "Recomendamos conferir os atributos S.M.A.R.T. e manter backup atualizado dos seus arquivos.",
+          impact: "Backup",
+          impactCls: "warn",
+          btnLabel: "Ver SSD"
+        });
+      } else {
+        oks.push(`✓ SSD ${t.MinDiskHealthPercent}%`);
+      }
+    }
+
+    // Aviso de calibração padrão (tarifa/PSU nunca editados)
+    if (Math.abs((cfg.TariffPerKwh || 0.85) - 0.85) < 0.001 && (cfg.PsuEfficiencyPercent || 85) === 85) {
+      recs.push({
+        id: "goto_settings",
+        kind: "nav",
+        target: "settings",
+        icon: "⚡",
+        tone: "",
+        title: "Calibre sua Tarifa de Luz (R$/kWh) e Selo da Fonte PSU",
+        desc: "Os valores ainda estão no padrão (R$ 0,85 e 85%). Calibrar com sua conta deixa o custo em Reais super preciso.",
+        impact: "Precisão",
+        impactCls: "cyan",
+        btnLabel: "Configurar"
+      });
+    }
+
+    // Processo pesado agora
+    const topProc = (t.TopProcesses || []).find((p) => p.CpuPercent >= 25);
+    if (topProc) {
+      recs.push({
+        id: "goto_system",
+        kind: "nav",
+        target: "system",
+        icon: "🔍",
+        tone: "warn",
+        title: `Alto uso de CPU agora: ${topProc.Name} (${fmtNum(topProc.CpuPercent, 0)}%)`,
+        desc: "Este processo está puxando mais energia neste momento. Veja o ranking completo em Sistema & Rede.",
+        impact: "Consumo",
+        impactCls: "warn",
+        btnLabel: "Inspecionar"
+      });
+    }
+
+    score = Math.max(20, Math.min(100, score));
+    return { score, recs, oks };
+  }
+
+  function renderScanResults(payload) {
+    if (!payload || !state.scanCompleted) return;
+    const diag = buildScanDiagnostics(payload);
+    const autoRecs = diag.recs.filter((r) => r.kind === "auto");
+
+    const arc = $("scanScoreArc");
+    const arcLen = 264;
+    if (arc) {
+      arc.style.strokeDashoffset = String(arcLen - (arcLen * diag.score) / 100);
+      arc.style.stroke = diag.score >= 85 ? "var(--green)" : (diag.score >= 60 ? "var(--amber)" : "var(--rose)");
+    }
+    if ($("scanScoreVal")) $("scanScoreVal").textContent = String(diag.score);
+
+    if ($("scanResTitle")) {
+      $("scanResTitle").textContent = autoRecs.length > 0
+        ? `Encontramos ${autoRecs.length} melhoria${autoRecs.length > 1 ? "s" : ""} segura${autoRecs.length > 1 ? "s" : ""} para o seu PC`
+        : "🎉 Seu PC está otimizado e protegido!";
+    }
+    if ($("scanResSub")) {
+      $("scanResSub").textContent = autoRecs.length > 0
+        ? "Marque as opções desejadas e clique em Otimizar Selecionados para aplicar tudo em 1 clique."
+        : "Todas as proteções térmicas, automações Eco e otimizações de SSD já estão ativas.";
+    }
+    if ($("scanOkStrip")) {
+      $("scanOkStrip").innerHTML = diag.oks.map((ok) => `<span class="scan-ok-pill">${esc(ok)}</span>`).join("");
+    }
+    if ($("scanRecCountBadge")) {
+      $("scanRecCountBadge").textContent = diag.recs.length === 0 ? "Tudo 100%" : `${diag.recs.length} item(ns)`;
+    }
+    if ($("btnApplyAllRecs")) {
+      $("btnApplyAllRecs").classList.toggle("hidden", autoRecs.length === 0);
+      $("btnApplyAllRecs").textContent = `⚡ Otimizar Selecionados (${autoRecs.length})`;
+    }
+
+    const listEl = $("scanRecsList");
+    if (!listEl) return;
+    if (diag.recs.length === 0) {
+      listEl.innerHTML = '<div class="scan-rec-item"><div class="scan-rec-ico green">✅</div><div class="scan-rec-body"><div class="scan-rec-title">Nenhuma pendência encontrada!</div><div class="scan-rec-desc">Seu computador já está configurado com eficiência máxima, proteção térmica e economia de SSD.</div></div></div>';
+      return;
+    }
+
+    listEl.innerHTML = diag.recs.map((r) => {
+      const chkHtml = r.kind === "auto"
+        ? `<input type="checkbox" class="scan-rec-chk" data-opt-id="${esc(r.id)}" ${r.checked ? "checked" : ""} />`
+        : "";
+      const btnHtml = r.kind === "auto"
+        ? `<button type="button" class="btn btn-primary btn-sm" data-apply-one="${esc(r.id)}">Aplicar</button>`
+        : `<button type="button" class="btn btn-ghost btn-sm" data-rec-action="${esc(r.id)}" data-rec-target="${esc(r.target || "")}">${esc(r.btnLabel || "Abrir")}</button>`;
+      return `
+        <div class="scan-rec-item">
+          ${chkHtml}
+          <div class="scan-rec-ico ${esc(r.tone)}">${r.icon}</div>
+          <div class="scan-rec-body">
+            <div class="scan-rec-title">
+              <span>${esc(r.title)}</span>
+              <span class="scan-impact-chip ${esc(r.impactCls)}">${esc(r.impact)}</span>
+            </div>
+            <div class="scan-rec-desc">${esc(r.desc)}</div>
+          </div>
+          ${btnHtml}
+        </div>
+      `;
+    }).join("");
+
+    listEl.querySelectorAll("[data-apply-one]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        sendHost({ action: "applySmartOptimize", items: [btn.dataset.applyOne] });
+        showToast("✓ Otimização aplicada com segurança!");
+      });
+    });
+    listEl.querySelectorAll("[data-rec-action]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const act = btn.dataset.recAction;
+        if (act === "action_admin") sendHost({ action: "restartAdmin" });
+        else if (act === "action_pawnio") sendHost({ action: "installDeps" });
+        else if (btn.dataset.recTarget) switchView(btn.dataset.recTarget);
+      });
+    });
+  }
+
+  function runSmartScan() {
+    if (state.scanning) return;
+    state.scanning = true;
+    state.scanCompleted = false;
+    if ($("scanHeroStage")) $("scanHeroStage").classList.remove("hidden");
+    if ($("scanResultsStage")) $("scanResultsStage").classList.add("hidden");
+    if ($("mainTopbar")) $("mainTopbar").classList.add("hidden");
+
+    const orb = $("btnRunScan");
+    const lbl = $("scanOrbLabel");
+    const cap = $("scanStepCaption");
+    if (orb) orb.classList.add("scanning");
+
+    const steps = [
+      { pct: "22%", msg: "Analisando consumo na tomada e calibração (PSU / Tarifa)..." },
+      { pct: "48%", msg: "Verificando eficiência da CPU (Speed Shift EPP) e GPU..." },
+      { pct: "72%", msg: "Checando temperaturas, Thermal Guard e voltagens..." },
+      { pct: "91%", msg: "Inspecionando saúde S.M.A.R.T. dos SSDs e processos..." },
+      { pct: "100%", msg: "Gerando recomendações seguras de otimização..." }
+    ];
+
+    let idx = 0;
+    const tick = () => {
+      if (idx < steps.length) {
+        if (lbl) lbl.textContent = steps[idx].pct;
+        if (cap) cap.textContent = steps[idx].msg;
+        idx++;
+        setTimeout(tick, 310);
+      } else {
+        state.scanning = false;
+        state.scanCompleted = true;
+        if (orb) orb.classList.remove("scanning");
+        if (lbl) lbl.textContent = "VERIFICAR";
+        if (cap) cap.textContent = "Análise 100% segura • Energia, Eco, Temperaturas & SSD";
+        if ($("scanHeroStage")) $("scanHeroStage").classList.add("hidden");
+        if ($("scanResultsStage")) $("scanResultsStage").classList.remove("hidden");
+        if ($("mainTopbar")) $("mainTopbar").classList.remove("hidden");
+        if (state.payload) renderScanResults(state.payload);
+      }
+    };
+    tick();
+  }
+
+  if ($("btnRunScan")) $("btnRunScan").addEventListener("click", runSmartScan);
+  if ($("btnRescan")) $("btnRescan").addEventListener("click", runSmartScan);
+  if ($("btnApplyAllRecs")) {
+    $("btnApplyAllRecs").addEventListener("click", () => {
+      const selected = Array.from(document.querySelectorAll(".scan-rec-chk:checked"))
+        .map((c) => c.dataset.optId)
+        .filter(Boolean);
+      if (selected.length === 0) {
+        showToast("Selecione pelo menos 1 item para otimizar.");
+        return;
+      }
+      sendHost({ action: "applySmartOptimize", items: selected });
+      showToast(`⚡ ${selected.length} otimização(ões) aplicadas com segurança!`);
+    });
+  }
+
   if ($("btnCheckUpdates")) {
     $("btnCheckUpdates").addEventListener("click", () => {
       showToast("Verificando atualizações no GitHub...");
@@ -480,6 +906,7 @@
       MinimizeToTrayOnClose: $("setMinTray").checked,
       StartWithWindows: $("setStartWin").checked,
       Theme: ($("setTheme") && $("setTheme").value) ? $("setTheme").value : "dark",
+      StartView: ($("setStartView") && $("setStartView").value) ? $("setStartView").value : "scan",
       Language: ($("setLang") && $("setLang").value) ? $("setLang").value : state.lang,
       EnableAlerts: $("setAlerts") ? $("setAlerts").checked : true,
       MonthlyBudgetAlert: $("setBudget") ? (parseFloat($("setBudget").value) || 0) : 0,
@@ -533,7 +960,12 @@
       $("setMinTray").checked = !!cfg.MinimizeToTrayOnClose;
       $("setStartWin").checked = !!cfg.StartWithWindows;
       $("setTheme").value = cfg.Theme || "dark";
+      if ($("setStartView")) $("setStartView").value = cfg.StartView || "scan";
       if ($("setLang")) $("setLang").value = state.lang;
+      if (!state.initialViewApplied) {
+        state.initialViewApplied = true;
+        switchView(cfg.StartView === "monitor" ? "overview" : "scan");
+      }
       if ($("setAlerts")) $("setAlerts").checked = cfg.EnableAlerts !== false;
       if ($("setBudget")) $("setBudget").value = cfg.MonthlyBudgetAlert || 0;
       if ($("setShowOverlay")) $("setShowOverlay").checked = !!cfg.ShowOverlay;
@@ -710,6 +1142,8 @@
     renderOverviewPower(t);
     renderBattery(t);
     renderTuning(payload);
+    renderScanLive(payload);
+    renderTools(payload);
     renderSession(payload);
     renderHistoryTable(s, cfg);
     renderThermals(payload);
@@ -1317,6 +1751,85 @@
     }
   }
 
+  function renderScanLive(payload) {
+    const t = payload.Telemetry || {};
+    const s = payload.Summary || {};
+    const cfg = payload.Settings || {};
+    const tu = payload.Tuning || {};
+    const cur = cfg.CurrencySymbol || "R$";
+
+    const wStr = `${fmtNum(t.EstimatedWallWatts, 0)} W`;
+    const ct = t.CpuTempC !== null && t.CpuTempC !== undefined ? `${fmtNum(t.CpuTempC, 0)}°` : "--°";
+    const gt = t.GpuTempC !== null && t.GpuTempC !== undefined ? `${fmtNum(t.GpuTempC, 0)}°` : "--°";
+
+    if ($("scanOrbSub") && !state.scanning) {
+      $("scanOrbSub").textContent = `${wStr} • ${ct}C`;
+    }
+    if ($("scanQWatts")) $("scanQWatts").textContent = wStr;
+    if ($("scanQTemps")) $("scanQTemps").textContent = `${ct} / ${gt}`;
+    if ($("scanQDisk")) {
+      $("scanQDisk").textContent = t.MinDiskHealthPercent !== null && t.MinDiskHealthPercent !== undefined
+        ? `${t.MinDiskHealthPercent}%` : "--%";
+    }
+    const profMap = { stock: "Stock", eco: "Eco", ultra_eco: "Ultra", custom: "Custom" };
+    if ($("scanQProfile")) $("scanQProfile").textContent = profMap[tu.ActiveProfile] || "Stock";
+
+    // Pílula de status inteligente na tela Verificar
+    if ($("scanBannerPill") && $("scanBannerText") && !state.scanning) {
+      const maxT = Math.max(t.CpuTempC || 0, t.GpuTempC || 0);
+      const isWarn = !t.IsAdmin || maxT >= (cfg.TempWarningC || 75);
+      $("scanBannerPill").classList.toggle("warn", isWarn);
+      if (!t.IsAdmin) {
+        $("scanBannerText").textContent = "Sem privilégios de Admin — clique em Verificar para liberar todos os sensores!";
+      } else if (maxT >= (cfg.TempWarningC || 75)) {
+        $("scanBannerText").textContent = `Temperatura alta (${fmtNum(maxT, 0)} °C) — clique em Verificar para otimizar!`;
+      } else {
+        $("scanBannerText").textContent = "Verifique para analisar consumo, eficiência Eco, temperaturas e saúde do seu PC!";
+      }
+    }
+
+    // Tooltips ao vivo da barra lateral direita de hardware (estilo Driver Booster)
+    if ($("dockSys")) $("dockSys").title = `Consumo agora: ${wStr} • Hoje: ${fmtMoney(s.TodayCost, cur)}`;
+    if ($("dockWin")) $("dockWin").title = `Windows: ${t.IsAdmin ? "Modo Admin ✓" : "Sem Admin ⚠"} • PawnIO: ${t.PawnIoInstalled ? "Ativo ✓" : "Ausente"}`;
+    if ($("dockCpu")) $("dockCpu").title = `CPU: ${t.CpuName || "--"} (${ct} • ${fmtNum(t.CpuWatts, 1)}W)`;
+    if ($("dockGpu")) $("dockGpu").title = `GPU: ${t.GpuName || "--"} (${gt} • ${t.GpuIsIntegrated ? "Integrada" : fmtNum(t.GpuWatts, 1) + "W"})`;
+    if ($("dockRam")) $("dockRam").title = `RAM: ${t.RamUsedGb !== null ? fmtNum(t.RamUsedGb, 1) : "--"} / ${t.RamTotalGb !== null ? fmtNum(t.RamTotalGb, 0) : "--"} GB (${t.RamLoadPercent !== null ? fmtNum(t.RamLoadPercent, 0) : "--"}%)`;
+    if ($("dockSsd")) $("dockSsd").title = `SSD/Discos: Saúde ${t.MinDiskHealthPercent !== null && t.MinDiskHealthPercent !== undefined ? t.MinDiskHealthPercent + "%" : "--"} • Máx ${t.MaxStorageTempC !== null ? fmtNum(t.MaxStorageTempC, 0) + "°C" : "--"}`;
+
+    if (state.scanCompleted) {
+      renderScanResults(payload);
+    }
+  }
+
+  function renderTools(payload) {
+    const t = payload.Telemetry || {};
+    const cfg = payload.Settings || {};
+    const sess = payload.Session || {};
+    const cur = cfg.CurrencySymbol || "R$";
+
+    if ($("toolOverlayStatus")) {
+      $("toolOverlayStatus").textContent = cfg.ShowOverlay ? "Ativo" : "Desativado";
+      $("toolOverlayStatus").className = "badge " + (cfg.ShowOverlay ? "badge-ok" : "badge-muted");
+    }
+    if ($("toolSessStatus")) {
+      $("toolSessStatus").textContent = sess.Active ? `Gravando (${sess.Name || "Sessão"})` : "Parado";
+      $("toolSessStatus").className = "badge " + (sess.Active ? "badge-ok" : "badge-muted");
+    }
+    if ($("toolTariffBadge")) {
+      $("toolTariffBadge").textContent = `${fmtMoney(cfg.TariffPerKwh || 0.85, cur)}/kWh`;
+    }
+    if ($("toolApiStatus")) {
+      const on = !!payload.LocalApiRunning;
+      $("toolApiStatus").textContent = on ? `Online :${cfg.LocalApiPort || 48731}` : "Desativada";
+      $("toolApiStatus").className = "badge " + (on ? "badge-ok" : "badge-muted");
+    }
+    if ($("toolPawnStatus")) {
+      const ok = t.IsAdmin && t.PawnIoInstalled;
+      $("toolPawnStatus").textContent = ok ? "Admin + PawnIO ✓" : (t.IsAdmin ? "Admin ✓ / Sem PawnIO" : "Sem Admin");
+      $("toolPawnStatus").className = "badge " + (ok ? "badge-ok" : "badge-warn");
+    }
+  }
+
   function renderBattery(t) {
     const card = $("batteryCard");
     if (!card) return;
@@ -1777,7 +2290,7 @@
 
       const demo = {
         Type: "telemetry",
-        AppVersion: "2.0.0",
+        AppVersion: "1.0.0",
         DataDirectory: "C:\\Users\\Demo\\AppData\\Local\\PcPowerMonitor",
         Settings: {
           TariffPerKwh: 0.89,

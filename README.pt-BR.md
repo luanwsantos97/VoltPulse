@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Plataforma-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Plataforma" />
-  <img src="https://img.shields.io/badge/Vers%C3%A3o-4.2.0-10b981?style=for-the-badge" alt="Versão" />
+  <img src="https://img.shields.io/badge/Vers%C3%A3o-1.0.0-10b981?style=for-the-badge" alt="Versão" />
   <img src="https://img.shields.io/badge/Licen%C3%A7a-MIT-a78bfa?style=for-the-badge" alt="Licença" />
   <img src="https://img.shields.io/badge/Idiomas-8%20Idiomas-f59e0b?style=for-the-badge" alt="Idiomas" />
   <img src="https://img.shields.io/badge/PRs-Bem--vindos-38bdf8?style=for-the-badge" alt="PRs Bem-vindos" />
@@ -37,11 +37,11 @@ O **VoltPulse** é um aplicativo desktop leve, nativo e open-source para Windows
 
 ## 📸 Capturas de Tela
 
-| Dashboard em Tempo Real | Eco & Undervolt Seguro |
+| Central Verificar & Otimizar (1 Clique) | Dashboard em Tempo Real |
 | :---: | :---: |
-| ![VoltPulse Dashboard](assets/screenshots/dashboard.jpg) | ![VoltPulse Eco & Undervolt](assets/screenshots/eco-undervolt.jpg) |
-| **Monitor de Temperaturas** | **Saúde & Vida Útil de SSD (S.M.A.R.T.)** |
-| ![VoltPulse Temperaturas](assets/screenshots/thermals.png) | ![VoltPulse Saúde SSD](assets/screenshots/ssd-health.png) |
+| ![VoltPulse Verificar](assets/screenshots/verify-hub.png) | ![VoltPulse Dashboard](assets/screenshots/dashboard.jpg) |
+| **Eco & Undervolt Seguro** | **Saúde & Vida Útil de SSD (S.M.A.R.T.)** |
+| ![VoltPulse Eco & Undervolt](assets/screenshots/eco-undervolt.jpg) | ![VoltPulse Saúde SSD](assets/screenshots/ssd-health.png) |
 
 ---
 

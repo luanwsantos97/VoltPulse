@@ -18,6 +18,7 @@ namespace PcPowerMonitor
         public bool MinimizeToTrayOnClose { get; set; }
         public bool StartWithWindows { get; set; }
         public string Theme { get; set; }          // dark, midnight, cyberpunk, emerald, amber, light
+        public string StartView { get; set; }      // scan, monitor
         public string Language { get; set; }
         public bool EnableAlerts { get; set; }
         public double MonthlyBudgetAlert { get; set; }
@@ -67,6 +68,7 @@ namespace PcPowerMonitor
             MinimizeToTrayOnClose = true;
             StartWithWindows = false;
             Theme = "dark";
+            StartView = "scan";
             EnableAlerts = true;
             MonthlyBudgetAlert = 0.0;
             ShowOverlay = false;
@@ -162,6 +164,12 @@ namespace PcPowerMonitor
             if (string.Equals(mode, "cpu_temp", StringComparison.OrdinalIgnoreCase)) return "cpu_temp";
             if (string.Equals(mode, "watts", StringComparison.OrdinalIgnoreCase)) return "watts";
             return "logo";
+        }
+
+        public static string NormalizeStartView(string view)
+        {
+            if (string.Equals(view, "monitor", StringComparison.OrdinalIgnoreCase)) return "monitor";
+            return "scan";
         }
 
         public static double GetDefaultTariffForCurrency(string isoCurrency)

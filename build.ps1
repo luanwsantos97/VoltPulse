@@ -1,7 +1,7 @@
 ﻿param(
     [switch]$ReleaseZip,
     [switch]$Installer,
-    [string]$Version = "4.3.0"
+    [string]$Version = "1.0.0"
 )
 
 $ErrorActionPreference = "Stop"
