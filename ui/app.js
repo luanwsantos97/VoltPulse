@@ -292,6 +292,17 @@
   }
 
   // Eco & Safe Tuning controls
+  function sendEcoAutomations() {
+    sendHost({
+      action: "saveEcoAutomations",
+      autoEcoOutsideGames: $("chkAutoEcoOutsideGames") ? $("chkAutoEcoOutsideGames").checked : false,
+      autoIdleEco: $("chkAutoIdleEco") ? $("chkAutoIdleEco").checked : false,
+      autoIdleMinutes: $("numIdleMins") ? (parseInt($("numIdleMins").value, 10) || 10) : 10,
+      thermalGuardEnabled: $("chkThermalGuard") ? $("chkThermalGuard").checked : true,
+      thermalGuardLimitC: $("numThermalGuardC") ? (parseFloat($("numThermalGuardC").value) || 85) : 85
+    });
+  }
+
   document.querySelectorAll(".profile-card[data-prof]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const prof = btn.dataset.prof;
@@ -301,23 +312,29 @@
     });
   });
 
-  if ($("chkAutoEcoOutsideGames")) {
-    $("chkAutoEcoOutsideGames").addEventListener("change", () => {
-      const autoEco = $("chkAutoEcoOutsideGames").checked;
-      const prof = autoEco ? "eco" : ((state.payload && state.payload.Settings && state.payload.Settings.TuningProfile) || "stock");
-      sendHost({ action: "applyTuningProfile", profile: prof, autoEco });
-      showToast(autoEco ? "Modo Eco automático fora de jogos ativado!" : "Modo Eco automático desativado.");
-    });
-  }
+  ["chkAutoEcoOutsideGames", "chkAutoIdleEco", "numIdleMins", "chkThermalGuard", "numThermalGuardC"].forEach((id) => {
+    if ($(id)) {
+      $(id).addEventListener("change", () => {
+        sendEcoAutomations();
+        showToast("Automação Eco salva!");
+      });
+    }
+  });
 
   if ($("tunCpuPct")) {
     $("tunCpuPct").addEventListener("input", () => {
       $("tunCpuPctLabel").textContent = `${$("tunCpuPct").value}%`;
     });
   }
+  if ($("tunCpuEpp")) {
+    $("tunCpuEpp").addEventListener("input", () => {
+      $("tunCpuEppLabel").textContent = `${$("tunCpuEpp").value}`;
+    });
+  }
   if ($("tunGpuPct")) {
     $("tunGpuPct").addEventListener("input", () => {
-      $("tunGpuPctLabel").textContent = `${$("tunGpuPct").value}%`;
+      const v = parseInt($("tunGpuPct").value, 10) || 100;
+      $("tunGpuPctLabel").textContent = `${v}% (${v === 100 ? "Stock" : (v - 100) + "%"})`;
     });
   }
   if ($("btnApplyCustomTuning")) {
@@ -326,6 +343,9 @@
         action: "applyTuningCustom",
         cpuMaxPercent: parseInt($("tunCpuPct").value, 10) || 99,
         cpuBoostMode: parseInt($("tunCpuBoost").value, 10),
+        cpuEpp: $("tunCpuEpp") ? (parseInt($("tunCpuEpp").value, 10) || 0) : 0,
+        passiveCooling: $("chkTunPassive") ? $("chkTunPassive").checked : false,
+        pcieAspmEco: $("chkTunAspm") ? $("chkTunAspm").checked : false,
         gpuPowerPercent: parseInt($("tunGpuPct").value, 10) || 85,
         autoEco: $("chkAutoEcoOutsideGames") ? $("chkAutoEcoOutsideGames").checked : false
       });
@@ -767,16 +787,47 @@
     const t = payload.Telemetry;
     const volts = t.Voltages || [];
 
-    // Destaque das principais trilhas (+12V, +5V, +3.3V, VCore / GPU Core)
-    const findRail = (patterns) => volts.find((v) => patterns.some((p) => v.SensorName.toLowerCase().includes(p)));
-    const r12 = findRail(["+12v", "12v"]);
-    const r5 = findRail(["+5v", "5v"]);
-    const rVcore = findRail(["vcore", "cpu core", "vid #1"]);
-    const rGpu = volts.find((v) => v.HardwareType === "GPU");
+    // Cards adaptativos: prioriza +12V e +5V; se a placa-mae (ex: ERYING/OEM/notebook) nao rotular,
+    // adapta automaticamente para +3.3V / 3VCC / VBat / sensores reais da placa-mae!
+    const findRail = (patterns, used) => volts.find((v) =>
+      !used.has(v) && patterns.some((p) => v.SensorName.toLowerCase().includes(p)));
+
+    const used = new Set();
+    const rVcore = findRail(["vcore", "cpu core", "vid #1"], used);
+    if (rVcore) used.add(rVcore);
+    const rGpu = volts.find((v) => !used.has(v) && v.HardwareType === "GPU");
+    if (rGpu) used.add(rGpu);
+
+    let r1 = findRail(["+12v", "12v"], used);
+    let r1Label = "Linha +12V";
+    if (!r1) {
+      r1 = findRail(["+3.3v", "3.3v", "3vcc", "avcc", "3vsb"], used);
+      if (r1) r1Label = "Linha +3.3V / SuperIO";
+    }
+    if (!r1) {
+      r1 = volts.find((v) => !used.has(v) && v.HardwareType === "Placa-mãe");
+      if (r1) r1Label = "Placa-mãe (" + r1.SensorName + ")";
+    }
+    if (r1) used.add(r1);
+
+    let r2 = findRail(["+5v", "5v"], used);
+    let r2Label = "Linha +5V";
+    if (!r2) {
+      r2 = findRail(["vbat", "cmos", "battery", "dram", "vdimm", "vccio", "vccsa"], used);
+      if (r2) r2Label = "Placa-mãe (" + r2.SensorName + ")";
+    }
+    if (!r2) {
+      r2 = volts.find((v) => !used.has(v) && v.HardwareType === "Placa-mãe");
+      if (r2) r2Label = "Placa-mãe (" + r2.SensorName + ")";
+    }
+    if (!r2) {
+      r2 = volts.find((v) => !used.has(v) && v.HardwareType === "CPU");
+      if (r2) r2Label = "CPU (" + r2.SensorName + ")";
+    }
 
     const highlights = [
-      { label: "Linha +12V", item: r12, fallback: "Placa-mãe SuperIO" },
-      { label: "Linha +5V", item: r5, fallback: "Placa-mãe SuperIO" },
+      { label: r1Label, item: r1, fallback: "Não exposto pela placa-mãe" },
+      { label: r2Label, item: r2, fallback: "Não exposto pela placa-mãe" },
       { label: "CPU VCore / VID", item: rVcore, fallback: t.CpuName },
       { label: "GPU Core Voltage", item: rGpu, fallback: t.GpuName }
     ];
@@ -1109,7 +1160,51 @@
 
   function renderTuning(payload) {
     const tu = payload.Tuning;
+    const t = payload.Telemetry || {};
+    const cfg = payload.Settings || {};
+    const cur = cfg.CurrencySymbol || "R$";
     if (!tu) return;
+
+    // Live Impact Strip (Antes vs Depois)
+    if ($("tunLiveWatts")) $("tunLiveWatts").textContent = `${fmtNum(t.EstimatedWallWatts, 1)} W`;
+    if ($("tunReasonChip")) {
+      const reasonMap = { manual: "Manual", game_auto: "Auto Jogo", idle_afk: "💤 Idle AFK", thermal_guard: "🔥 Thermal Guard" };
+      $("tunReasonChip").textContent = reasonMap[tu.EffectiveReason] || "Manual";
+    }
+    if ($("tunSavingsSub")) {
+      $("tunSavingsSub").textContent = tu.BaselineStockWatts > 0
+        ? `Baseline Stock: ${fmtNum(tu.BaselineStockWatts, 0)} W`
+        : "Baseline Stock: coletando...";
+    }
+
+    const vcoreObj = (t.Voltages || []).find((v) => {
+      const n = (v.SensorName || "").toLowerCase();
+      return n.includes("vcore") || n.includes("cpu core") || n.includes("vid #1");
+    });
+    if ($("tunLiveVcore")) $("tunLiveVcore").textContent = vcoreObj ? `${fmtNum(vcoreObj.Value, 3)} V` : "-- V";
+    if ($("tunLiveClock")) $("tunLiveClock").textContent = t.CpuClockMhz ? `Clock: ${fmtNum(t.CpuClockMhz / 1000, 2)} GHz` : "Clock: --";
+    if ($("tunEppChip")) $("tunEppChip").textContent = `EPP ${tu.CpuEpp || 0}`;
+
+    if ($("tunLiveTemps")) {
+      const ct = t.CpuTempC !== null && t.CpuTempC !== undefined ? `${fmtNum(t.CpuTempC, 0)}°` : "--°";
+      const gt = t.GpuTempC !== null && t.GpuTempC !== undefined ? `${fmtNum(t.GpuTempC, 0)}°` : "--°";
+      $("tunLiveTemps").textContent = `${ct} / ${gt}`;
+    }
+    if ($("tunThermalBadge")) {
+      $("tunThermalBadge").textContent = tu.ThermalGuardTriggered ? "🔥 Protegendo!" : (tu.IdleEcoTriggered ? "💤 Idle AFK" : "Estável");
+    }
+
+    if ($("tunEstMonthlySave")) {
+      if (tu.EstimatedWattsSaved > 1) {
+        const monthlyKwh = (tu.EstimatedWattsSaved * 8 * 30) / 1000;
+        const monthlyCost = monthlyKwh * (cfg.TariffPerKwh || 0.85);
+        $("tunEstMonthlySave").textContent = `-${fmtMoney(monthlyCost, cur)}/mês`;
+        $("tunEstWattsSave").textContent = `-${fmtNum(tu.EstimatedWattsSaved, 1)} W agora (-${fmtNum(monthlyKwh, 1)} kWh/mês)`;
+      } else {
+        $("tunEstMonthlySave").textContent = tu.ActiveProfile === "stock" ? "Padrão (Stock)" : "Monitorando...";
+        $("tunEstWattsSave").textContent = tu.ActiveProfile === "stock" ? "Ative Eco para comparar" : "Comparando com baseline Stock";
+      }
+    }
 
     if ($("appMemBadge") && payload.AppMemoryMb) {
       $("appMemBadge").textContent = `Host RAM: ${fmtNum(payload.AppMemoryMb, 1)} MB`;
@@ -1117,28 +1212,44 @@
 
     const labelMap = { stock: "Stock", eco: "Eco", ultra_eco: "Ultra", custom: "Custom" };
     if ($("navTuningBadge")) {
-      $("navTuningBadge").textContent = labelMap[tu.ActiveProfile] || "Stock";
+      $("navTuningBadge").textContent = tu.ThermalGuardTriggered ? "🔥 Eco" : (tu.IdleEcoTriggered ? "💤 Ultra" : (labelMap[tu.ActiveProfile] || "Stock"));
     }
 
     document.querySelectorAll(".profile-card[data-prof]").forEach((c) => {
       c.classList.toggle("active", c.dataset.prof === tu.ActiveProfile);
     });
 
-    if ($("chkAutoEcoOutsideGames") && document.activeElement !== $("chkAutoEcoOutsideGames")) {
-      $("chkAutoEcoOutsideGames").checked = !!tu.AutoEcoOutsideGames;
-    }
+    if ($("chkAutoEcoOutsideGames") && document.activeElement !== $("chkAutoEcoOutsideGames"))
+      $("chkAutoEcoOutsideGames").checked = !!cfg.AutoEcoOutsideGames;
+    if ($("chkAutoIdleEco") && document.activeElement !== $("chkAutoIdleEco"))
+      $("chkAutoIdleEco").checked = !!cfg.AutoIdleEco;
+    if ($("numIdleMins") && document.activeElement !== $("numIdleMins"))
+      $("numIdleMins").value = cfg.AutoIdleMinutes || 10;
+    if ($("chkThermalGuard") && document.activeElement !== $("chkThermalGuard"))
+      $("chkThermalGuard").checked = cfg.ThermalGuardEnabled !== false;
+    if ($("numThermalGuardC") && document.activeElement !== $("numThermalGuardC"))
+      $("numThermalGuardC").value = cfg.ThermalGuardLimitC || 85;
 
     if ($("tunCpuPct") && document.activeElement !== $("tunCpuPct")) {
       $("tunCpuPct").value = tu.CpuMaxPercent || 100;
       $("tunCpuPctLabel").textContent = `${tu.CpuMaxPercent || 100}%`;
     }
+    if ($("tunCpuEpp") && document.activeElement !== $("tunCpuEpp")) {
+      $("tunCpuEpp").value = tu.CpuEpp || 0;
+      $("tunCpuEppLabel").textContent = `${tu.CpuEpp || 0}`;
+    }
     if ($("tunCpuBoost") && document.activeElement !== $("tunCpuBoost")) {
       $("tunCpuBoost").value = String(tu.CpuBoostMode !== undefined ? tu.CpuBoostMode : 2);
     }
+    if ($("chkTunPassive") && document.activeElement !== $("chkTunPassive"))
+      $("chkTunPassive").checked = !!tu.PassiveCooling;
+    if ($("chkTunAspm") && document.activeElement !== $("chkTunAspm"))
+      $("chkTunAspm").checked = !!tu.PcieAspmEco;
 
     if ($("tuningGpuBadge")) {
       if (tu.HasDedicatedGpu) {
-        $("tuningGpuBadge").textContent = `${tu.DedicatedGpuVendor} Dedicada`;
+        const be = tu.GpuPowerLimitSupported ? ` (${tu.GpuControlBackend})` : "";
+        $("tuningGpuBadge").textContent = `${tu.DedicatedGpuVendor} Dedicada${be}`;
         $("tuningGpuBadge").className = "badge badge-ok";
       } else {
         $("tuningGpuBadge").textContent = "Sem GPU Dedicada";
@@ -1150,12 +1261,18 @@
       $("tunGpuName").textContent = tu.HasDedicatedGpu ? tu.DedicatedGpuName : "Ignorada (Integrada)";
     }
     if ($("tunGpuPct")) {
+      $("tunGpuPct").min = String(tu.GpuMinPercent || 70);
       $("tunGpuPct").disabled = !tu.GpuPowerLimitSupported;
       if (document.activeElement !== $("tunGpuPct")) {
-        $("tunGpuPct").value = tu.GpuPowerLimitPercent || 100;
-        $("tunGpuPctLabel").textContent = tu.GpuPowerLimitSupported
-          ? `${tu.GpuPowerLimitPercent || 100}% (${fmtNum(tu.GpuCurrentLimitWatts || tu.GpuDefaultWatts, 0)} W)`
-          : "N/A";
+        const gp = tu.GpuPowerLimitPercent || 100;
+        $("tunGpuPct").value = gp;
+        if (tu.GpuPowerLimitSupported) {
+          $("tunGpuPctLabel").textContent = tu.GpuDefaultWatts > 0
+            ? `${gp}% (${fmtNum(tu.GpuCurrentLimitWatts || tu.GpuDefaultWatts, 0)} W)`
+            : `${gp}% (${gp === 100 ? "Stock" : (gp - 100) + "%"})`;
+        } else {
+          $("tunGpuPctLabel").textContent = "N/A";
+        }
       }
     }
     if ($("tunGpuNote")) {

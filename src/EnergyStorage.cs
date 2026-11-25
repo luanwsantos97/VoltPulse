@@ -82,6 +82,8 @@ namespace PcPowerMonitor
                         loaded.TrayIconMode = AppSettings.NormalizeTrayMode(loaded.TrayIconMode);
                         loaded.LocalApiPort = loaded.LocalApiPort < 1024 || loaded.LocalApiPort > 65535 ? 48731 : loaded.LocalApiPort;
                         loaded.MonthlyBudgetAlert = Math.Max(0.0, loaded.MonthlyBudgetAlert);
+                        loaded.AutoIdleMinutes = loaded.AutoIdleMinutes < 2 || loaded.AutoIdleMinutes > 180 ? 10 : loaded.AutoIdleMinutes;
+                        loaded.ThermalGuardLimitC = loaded.ThermalGuardLimitC < 65 || loaded.ThermalGuardLimitC > 105 ? 85.0 : loaded.ThermalGuardLimitC;
                         return loaded;
                     }
                 }

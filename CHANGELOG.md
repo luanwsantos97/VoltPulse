@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.2.0] - 2026-11-25
+### Adicionado
+- **Eco Engine Pro (`SafePowerTuner.cs`)**:
+  - **Intel Speed Shift / AMD CPPC (`PERFEPP` 0–100)**: reduz dinamicamente VCore e temperatura da CPU sem travar responsividade.
+  - **Estado Mínimo CPU (`5%`), Política de Resfriamento Passiva e PCIe ASPM** no modo *Ultra Silencioso*.
+  - **Suporte real para GPU dedicada AMD Radeon via `atiadlxx.dll`** (*OverdriveN* e *Overdrive6* oficiais): Power Limit seguro certificado pela VBIOS (`70%–100%`, nunca overclock, GPUs integradas bloqueadas), somando-se ao suporte oficial NVIDIA (`nvidia-smi`).
+- **💤 Modo Idle Automático (AFK)**: detecta inatividade (`GetLastInputInfo`), aplica *Ultra Silencioso* após X minutos e restaura instantaneamente ao mexer no mouse/teclado.
+- **🔥 Proteção Térmica Automática (*Thermal Guard*)**: aplica *Eco* sozinho se CPU/GPU ultrapassar o limite configurado por 15s e restaura quando esfriar.
+- **📊 Painel Antes vs. Depois ao vivo** na aba `Eco & Undervolt` (Watts atuais, VCore, Clock GHz, Temperaturas e economia estimada em R\$/mês vs. baseline Stock).
+- **Cards adaptativos na aba Voltagens**: placas-mãe OEM/chinesas (como ERYING) ou notebooks que não rotulam `+12V`/`+5V` exibem automaticamente as trilhas reais disponíveis (`+3.3V / 3VCC / VBat / SuperIO`) sem cards vazios.
+
 ## [4.1.1] - 2026-11-23
 ### Corrigido & Melhorado
 - **Detecção cirúrgica de jogos (`GameDetector.cs` — zero falsos positivos)**: removidos os gatilhos genéricos por tela cheia / pico de GPU que ativavam o Modo Jogo em utilitários como *Lightshot* e apps Electron/WebView. Agora identifica jogos exclusivamente por bibliotecas oficiais (*Steam, Epic, Riot, Xbox, EA, Ubisoft, Battle.net, GOG, Rockstar, HoYoverse*), lista de executáveis de jogos conhecidos ou DLLs exclusivas de engines/SDKs de jogos (*UnityPlayer, steam_api, EOSSDK, fmod, dinput8, nvngx_dlss, amd_ags_x64, PhysX, bink2w64*), bloqueando explicitamente navegadores, IDEs, apps de captura e frameworks Chromium/WebView2.

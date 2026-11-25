@@ -17,7 +17,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "4.1.1";
+        public const string AppVersion = "4.2.0";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
@@ -27,6 +27,12 @@ namespace PcPowerMonitor
         private readonly SafePowerTuner _tuner = new SafePowerTuner();
         private readonly LocalApiServer _localApi = new LocalApiServer();
         private bool _inBackgroundEcoMode;
+
+        // Eco Engine Pro Automations (Idle AFK + Thermal Guard)
+        private bool _idleEcoActive;
+        private bool _thermalGuardActive;
+        private string _profileBeforeAuto = "stock";
+        private DateTime _highTempSinceUtc = DateTime.MinValue;
         private readonly CultureInfo _ptBr = new CultureInfo("pt-BR");
         private readonly JavaScriptSerializer _json = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
 
@@ -70,6 +76,31 @@ namespace PcPowerMonitor
 
         [DllImport("kernel32.dll")]
         private static extern bool SetProcessWorkingSetSize(IntPtr proc, IntPtr min, IntPtr max);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct LASTINPUTINFO
+        {
+            public uint cbSize;
+            public uint dwTime;
+        }
+
+        private static double GetSystemIdleSeconds()
+        {
+            try
+            {
+                var lii = new LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf(typeof(LASTINPUTINFO)) };
+                if (GetLastInputInfo(ref lii))
+                {
+                    uint diff = unchecked((uint)Environment.TickCount - lii.dwTime);
+                    return diff / 1000.0;
+                }
+            }
+            catch { }
+            return 0.0;
+        }
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool SetProcessInformation(IntPtr hProcess, int processInformationClass, ref PROCESS_POWER_THROTTLING_STATE processInformation, int processInformationSize);
@@ -502,9 +533,12 @@ namespace PcPowerMonitor
                     case "applyTuningProfile":
                         string prof = msg.ContainsKey("profile") ? Convert.ToString(msg["profile"]) : "stock";
                         bool autoEco = msg.ContainsKey("autoEco") && Convert.ToBoolean(msg["autoEco"]);
+                        _idleEcoActive = false;
+                        _thermalGuardActive = false;
                         _settings.TuningProfile = prof;
                         _settings.AutoEcoOutsideGames = autoEco;
-                        _tuner.ApplyProfile(prof, autoEco);
+                        _tuner.SetAutomationFlags(false, false, "manual");
+                        _tuner.ApplyProfile(prof, autoEco, "manual");
                         _storage.SaveSettings(_settings);
                         PollAndPush(true);
                         break;
@@ -512,16 +546,39 @@ namespace PcPowerMonitor
                     case "applyTuningCustom":
                         int cpuPct = (int)ReadDouble(msg, "cpuMaxPercent", 99, 50, 100);
                         int cpuBoost = (int)ReadDouble(msg, "cpuBoostMode", 3, 0, 3);
+                        int cpuEpp = (int)ReadDouble(msg, "cpuEpp", 65, 0, 100);
+                        bool passiveCool = ReadBool(msg, "passiveCooling", false);
+                        bool pcieAspm = ReadBool(msg, "pcieAspmEco", false);
                         int gpuPct = (int)ReadDouble(msg, "gpuPowerPercent", 85, 65, 100);
                         bool autoEcoC = ReadBool(msg, "autoEco", _settings.AutoEcoOutsideGames);
+                        _idleEcoActive = false;
+                        _thermalGuardActive = false;
                         _settings.TuningProfile = "custom";
                         _settings.AutoEcoOutsideGames = autoEcoC;
-                        _tuner.ApplyCustom("custom", cpuPct, cpuBoost, gpuPct, autoEcoC);
+                        _tuner.SetAutomationFlags(false, false, "manual");
+                        _tuner.ApplyCustom("custom", cpuPct, 5, cpuBoost, cpuEpp, passiveCool, pcieAspm, gpuPct, autoEcoC, "manual");
+                        _storage.SaveSettings(_settings);
+                        PollAndPush(true);
+                        break;
+
+                    case "saveEcoAutomations":
+                        _settings.AutoEcoOutsideGames = ReadBool(msg, "autoEcoOutsideGames", _settings.AutoEcoOutsideGames);
+                        _settings.AutoIdleEco = ReadBool(msg, "autoIdleEco", _settings.AutoIdleEco);
+                        _settings.AutoIdleMinutes = (int)ReadDouble(msg, "autoIdleMinutes", _settings.AutoIdleMinutes, 2, 180);
+                        _settings.ThermalGuardEnabled = ReadBool(msg, "thermalGuardEnabled", _settings.ThermalGuardEnabled);
+                        _settings.ThermalGuardLimitC = ReadDouble(msg, "thermalGuardLimitC", _settings.ThermalGuardLimitC, 65, 100);
+                        if (_settings.AutoEcoOutsideGames && !_lastGameMode.Active && _settings.TuningProfile == "stock")
+                        {
+                            _settings.TuningProfile = "eco";
+                            _tuner.ApplyProfile("eco", true, "game_auto");
+                        }
                         _storage.SaveSettings(_settings);
                         PollAndPush(true);
                         break;
 
                     case "restoreStockTuning":
+                        _idleEcoActive = false;
+                        _thermalGuardActive = false;
                         _settings.TuningProfile = "stock";
                         _settings.AutoEcoOutsideGames = false;
                         _tuner.RestoreStock();
@@ -745,8 +802,10 @@ namespace PcPowerMonitor
             var snap = _monitor.Capture(_settings, _paused, bgUltraLow);
             _lastSnapshot = snap;
 
-            // Modo Jogo Automatico + Auto Eco fora de jogos
+            // Modo Jogo Automatico + Auto Eco + Idle AFK + Thermal Guard
             HandleAutoGameMode(snap);
+            _tuner.UpdateStockBaseline(snap.EstimatedWallWatts);
+            HandleEcoAutomations(snap);
 
             if (!_paused && elapsed > 0.2)
             {
@@ -793,7 +852,7 @@ namespace PcPowerMonitor
                 Summary = summary,
                 Session = session,
                 GameMode = _lastGameMode,
-                Tuning = _tuner.GetStatus(),
+                Tuning = _tuner.GetStatus(snap.EstimatedWallWatts),
                 Update = _updateInfo,
                 Settings = _settings,
                 AppMemoryMb = memMb,
@@ -855,7 +914,7 @@ namespace PcPowerMonitor
                 // Ao fechar o jogo, volta automaticamente para o perfil Eco seguro!
                 if (_settings.AutoEcoOutsideGames)
                 {
-                    _tuner.ApplyProfile("eco", true);
+                    _tuner.ApplyProfile("eco", true, "game_auto");
                 }
 
                 if (_overlayAutoShownByGame)
@@ -863,6 +922,69 @@ namespace PcPowerMonitor
                     _overlayAutoShownByGame = false;
                     SetOverlayVisible(false, false);
                 }
+            }
+        }
+
+        private void HandleEcoAutomations(TelemetrySnapshot snap)
+        {
+            // 1. Protecao Termica Automatica (Thermal Guard)
+            if (_settings.ThermalGuardEnabled)
+            {
+                double maxTemp = Math.Max(snap.CpuTempC ?? 0.0, snap.GpuTempC ?? 0.0);
+                if (!_thermalGuardActive)
+                {
+                    if (maxTemp >= _settings.ThermalGuardLimitC)
+                    {
+                        if (_highTempSinceUtc == DateTime.MinValue) _highTempSinceUtc = DateTime.UtcNow;
+                        if ((DateTime.UtcNow - _highTempSinceUtc).TotalSeconds >= 15.0)
+                        {
+                            _thermalGuardActive = true;
+                            _profileBeforeAuto = _tuner.GetStatus().ActiveProfile;
+                            _tuner.SetAutomationFlags(_idleEcoActive, true, "thermal_guard");
+                            _tuner.ApplyProfile("eco", _settings.AutoEcoOutsideGames, "thermal_guard");
+                        }
+                    }
+                    else
+                    {
+                        _highTempSinceUtc = DateTime.MinValue;
+                    }
+                }
+                else
+                {
+                    if (maxTemp > 0 && maxTemp <= _settings.ThermalGuardLimitC - 12.0)
+                    {
+                        _thermalGuardActive = false;
+                        _highTempSinceUtc = DateTime.MinValue;
+                        _tuner.SetAutomationFlags(_idleEcoActive, false, "manual");
+                        _tuner.ApplyProfile(_profileBeforeAuto, _settings.AutoEcoOutsideGames, "manual");
+                    }
+                }
+            }
+
+            // 2. Modo Idle Automatico (AFK) — entra em Ultra Silencioso apos X min sem mexer no mouse/teclado
+            if (_settings.AutoIdleEco && !_lastGameMode.Active && !_thermalGuardActive)
+            {
+                double idleSec = GetSystemIdleSeconds();
+                double thresholdSec = Math.Max(120, _settings.AutoIdleMinutes * 60);
+
+                if (!_idleEcoActive && idleSec >= thresholdSec)
+                {
+                    _idleEcoActive = true;
+                    _profileBeforeAuto = _tuner.GetStatus().ActiveProfile;
+                    _tuner.SetAutomationFlags(true, _thermalGuardActive, "idle_afk");
+                    _tuner.ApplyProfile("ultra_eco", _settings.AutoEcoOutsideGames, "idle_afk");
+                }
+                else if (_idleEcoActive && idleSec < 8.0)
+                {
+                    _idleEcoActive = false;
+                    _tuner.SetAutomationFlags(false, _thermalGuardActive, "manual");
+                    _tuner.ApplyProfile(_profileBeforeAuto, _settings.AutoEcoOutsideGames, "manual");
+                }
+            }
+            else if (_idleEcoActive && (!_settings.AutoIdleEco || _lastGameMode.Active))
+            {
+                _idleEcoActive = false;
+                _tuner.SetAutomationFlags(false, _thermalGuardActive, "manual");
             }
         }
 
@@ -1090,6 +1212,7 @@ namespace PcPowerMonitor
                 _trayIcon.Dispose();
             }
             if (_monitor != null) _monitor.Dispose();
+            _tuner.Dispose();
             Application.Exit();
         }
 

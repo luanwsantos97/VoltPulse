@@ -500,11 +500,35 @@
 
       <!-- VIEW 2B: SAFE ECO & UNDERVOLT TUNING -->
       <section class="view" id="view-tuning">
+        <!-- Live Impact Strip (Antes vs Depois em tempo real) -->
+        <div class="kpi-grid">
+          <div class="kpi-card accent-cyan">
+            <div class="kpi-head"><span>CONSUMO AGORA</span><span class="kpi-chip cyan" id="tunReasonChip">Manual</span></div>
+            <div class="kpi-value" id="tunLiveWatts">-- W</div>
+            <div class="kpi-sub" id="tunSavingsSub">Baseline Stock: coletando...</div>
+          </div>
+          <div class="kpi-card accent-green">
+            <div class="kpi-head"><span>CPU VCORE / CLOCK</span><span class="kpi-chip green" id="tunEppChip">EPP 0</span></div>
+            <div class="kpi-value" id="tunLiveVcore">-- V</div>
+            <div class="kpi-sub" id="tunLiveClock">Clock: -- GHz</div>
+          </div>
+          <div class="kpi-card accent-amber">
+            <div class="kpi-head"><span>TEMPERATURAS</span><span class="kpi-chip amber" id="tunThermalBadge">Normal</span></div>
+            <div class="kpi-value" id="tunLiveTemps">--° / --°</div>
+            <div class="kpi-sub">CPU / GPU em tempo real</div>
+          </div>
+          <div class="kpi-card accent-purple">
+            <div class="kpi-head"><span>ECONOMIA ESTIMADA</span><span class="kpi-chip purple">8h/DIA</span></div>
+            <div class="kpi-value" id="tunEstMonthlySave">--</div>
+            <div class="kpi-sub" id="tunEstWattsSave">Ative Eco para comparar</div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header">
             <div>
               <div class="card-title">🛡️ Perfis Seguros de Eficiência &amp; Undervolt Térmico</div>
-              <div class="card-sub">Usa exclusivamente limites certificados do Windows (powercfg) e drivers oficiais — zero risco de Tela Azul (BSOD) ou dano ao hardware</div>
+              <div class="card-sub">Usa exclusivamente limites certificados do Windows (powercfg / Speed Shift EPP) e drivers oficiais (AMD ADL / NVIDIA) — zero risco de BSOD</div>
             </div>
             <button class="btn btn-danger btn-sm" id="btnRestoreStock">↺ Restaurar Padrão de Fábrica</button>
           </div>
@@ -512,28 +536,45 @@
           <div class="tuning-profiles-grid">
             <button type="button" class="profile-card" id="profStock" data-prof="stock">
               <div class="prof-head"><span class="prof-ico">⚖️</span><strong>Padrão (Stock)</strong></div>
-              <p>Configuração original de fábrica: CPU 100% com Turbo Boost normal e GPU 100% do Power Limit.</p>
-              <span class="prof-meta">CPU 100% • Boost Normal • GPU 100%</span>
+              <p>Configuração original de fábrica: CPU 100%, EPP 0 (desempenho máximo) e GPU 100% do Power Limit.</p>
+              <span class="prof-meta">CPU 100% • EPP 0 • GPU 100%</span>
             </button>
 
             <button type="button" class="profile-card" id="profEco" data-prof="eco">
               <div class="prof-head"><span class="prof-ico">🌿</span><strong>Eco Inteligente</strong><span class="status-tag ok">Recomendado</span></div>
-              <p>Reduz picos de tensão e temperatura em até 15°C e 25–35% menos consumo mantendo alta fluidez.</p>
-              <span class="prof-meta">CPU 99% • Boost Eficiente • GPU 85%</span>
+              <p>Speed Shift EPP 65 + Boost Eficiente + GPU -15%: derruba VCore, temperatura e 25–35% do consumo com alta fluidez.</p>
+              <span class="prof-meta">CPU 99% • EPP 65 • GPU 85%</span>
             </button>
 
             <button type="button" class="profile-card" id="profUltra" data-prof="ultra_eco">
               <div class="prof-head"><span class="prof-ico">🤫</span><strong>Ultra Silencioso</strong></div>
-              <p>Consumo mínimo para estudos, trabalho leve, downloads ou deixar o PC ligado à noite.</p>
-              <span class="prof-meta">CPU 85% • Boost Off • GPU 75%</span>
+              <p>EPP 90 + Boost Off + Resfriamento Passivo + PCIe ASPM + GPU -25%: ideal para trabalho leve, estudos ou downloads.</p>
+              <span class="prof-meta">CPU 85% • EPP 90 • ASPM • GPU 75%</span>
             </button>
           </div>
 
+          <!-- Automações Inteligentes -->
           <div class="toggle-list" style="margin-top:14px">
             <label class="toggle-row">
               <input type="checkbox" id="chkAutoEcoOutsideGames" />
-              <span>🎮 <strong>Automático Inteligente:</strong> manter PC em <em>Eco</em> fora de jogos e liberar <em>Padrão (Stock)</em> automaticamente ao abrir um jogo</span>
+              <span>🎮 <strong>Eco fora de Jogos:</strong> manter em <em>Eco</em> no dia a dia e liberar <em>Stock (100%)</em> automaticamente ao abrir um jogo</span>
             </label>
+            <div class="toggle-row" style="flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                <input type="checkbox" id="chkAutoIdleEco" />
+                <span>💤 <strong>Modo Idle (AFK):</strong> entrar em <em>Ultra Silencioso</em> após</span>
+              </label>
+              <input type="number" id="numIdleMins" class="text-input" min="2" max="120" value="10" style="width:68px;padding:4px 8px" />
+              <span>min sem mexer no mouse/teclado (volta na hora ao mexer)</span>
+            </div>
+            <div class="toggle-row" style="flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                <input type="checkbox" id="chkThermalGuard" />
+                <span>🔥 <strong>Proteção Térmica (Thermal Guard):</strong> aplicar <em>Eco</em> automaticamente se CPU/GPU passar de</span>
+              </label>
+              <input type="number" id="numThermalGuardC" class="text-input" min="65" max="100" value="85" style="width:68px;padding:4px 8px" />
+              <span>°C por 15s (restaura quando esfriar)</span>
+            </div>
           </div>
         </div>
 
@@ -558,6 +599,14 @@
 
               <div class="sim-field">
                 <div class="sim-label-row">
+                  <span>Speed Shift / CPPC EPP (0 = Máx Perf • 100 = Máx Eco)</span>
+                  <strong id="tunCpuEppLabel">0</strong>
+                </div>
+                <input type="range" id="tunCpuEpp" min="0" max="100" step="5" value="0" />
+              </div>
+
+              <div class="sim-field">
+                <div class="sim-label-row">
                   <span>Modo de Turbo Boost da CPU</span>
                 </div>
                 <select id="tunCpuBoost" class="select-input full">
@@ -573,8 +622,19 @@
                   <span>Power Limit GPU Dedicada (<span id="tunGpuName">--</span>)</span>
                   <strong id="tunGpuPctLabel">100%</strong>
                 </div>
-                <input type="range" id="tunGpuPct" min="65" max="100" step="5" value="100" />
+                <input type="range" id="tunGpuPct" min="70" max="100" step="5" value="100" />
                 <div class="card-sub" id="tunGpuNote" style="margin-top:6px"></div>
+              </div>
+
+              <div class="toggle-list" style="margin-top:4px">
+                <label class="toggle-row">
+                  <input type="checkbox" id="chkTunPassive" />
+                  <span>Política de Resfriamento Passiva (reduz clock/VCore antes de acelerar fans)</span>
+                </label>
+                <label class="toggle-row">
+                  <input type="checkbox" id="chkTunAspm" />
+                  <span>PCIe ASPM Economia Máxima (reduz consumo em idle do barramento PCIe)</span>
+                </label>
               </div>
             </div>
 
@@ -597,6 +657,7 @@
               <li><strong>EcoQoS (Eficiência Windows 11):</strong> roda em baixa prioridade nos núcleos de eficiência em segundo plano.</li>
               <li><strong>Polling Adaptativo:</strong> desacelera para 5s na bandeja e pausa leitura de processos até você reabrir a janela.</li>
               <li><strong>Proteção de SSD (-90% escritas):</strong> salva o histórico no disco a cada 3 minutos e automaticamente antes de desligar/suspender.</li>
+              <li><strong>AMD ADL &amp; NVIDIA Oficiais:</strong> Power Limit aplicado apenas dentro da faixa certificada da VBIOS (nunca overclock, nunca em GPU integrada).</li>
               <li><strong>100% Reversível:</strong> nenhum registrador perigoso (MSR/VRM) é modificado; tudo volta ao padrão de fábrica com 1 clique ou ao sair.</li>
             </ul>
           </div>

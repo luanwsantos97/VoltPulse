@@ -40,6 +40,12 @@ namespace PcPowerMonitor
         public bool RestoreStockOnExit { get; set; }
         public bool UltraLowBackgroundMode { get; set; }
 
+        // v4.2 Eco Engine Pro (Idle AFK + Thermal Guard)
+        public bool AutoIdleEco { get; set; }
+        public int AutoIdleMinutes { get; set; }
+        public bool ThermalGuardEnabled { get; set; }
+        public double ThermalGuardLimitC { get; set; }
+
         public AppSettings()
         {
             ApplySystemLocaleDefaults();
@@ -67,6 +73,10 @@ namespace PcPowerMonitor
             AutoEcoOutsideGames = false;
             RestoreStockOnExit = true;
             UltraLowBackgroundMode = true;
+            AutoIdleEco = false;
+            AutoIdleMinutes = 10;
+            ThermalGuardEnabled = true;
+            ThermalGuardLimitC = 85.0;
         }
 
         public void ApplySystemLocaleDefaults()
