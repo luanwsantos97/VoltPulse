@@ -563,7 +563,10 @@
     if (payload.AppVersion) $("appVersionBadge").textContent = "v" + payload.AppVersion;
 
     // Header
-    $("hwStrip").textContent = `${t.CpuName}  •  ${t.GpuName}  •  ${t.MotherboardName}`;
+    const gpuDisplayName = t.GpuIsIntegrated && t.GpuName && t.GpuName.toLowerCase().indexOf("integr") < 0
+      ? `${t.GpuName} (Integrada)`
+      : t.GpuName;
+    $("hwStrip").textContent = `${t.CpuName}  •  ${gpuDisplayName}  •  ${t.MotherboardName}`;
     $("badgeLastUpdate").textContent = t.TimeLabel || "--:--:--";
 
     const badgeAdmin = $("badgeAdmin");
@@ -613,7 +616,11 @@
     // KPI Cards
     $("kpiEffChip").textContent = `${fmtNum(cfg.PsuEfficiencyPercent, 0)}% PSU`;
     $("kpiNowWatts").textContent = `${fmtNum(t.EstimatedWallWatts, 1)} W`;
-    $("kpiNowSub").textContent = `CPU ${fmtNum(t.CpuWatts, 1)}W • GPU ${fmtNum(t.GpuWatts, 1)}W • Base ${fmtNum(cfg.BaseSystemWatts, 0)}W`;
+    if (t.GpuIsIntegrated && t.CpuWatts > 0.5) {
+      $("kpiNowSub").textContent = `CPU+iGPU ${fmtNum(t.CpuWatts, 1)}W • Base ${fmtNum(cfg.BaseSystemWatts, 0)}W`;
+    } else {
+      $("kpiNowSub").textContent = `CPU ${fmtNum(t.CpuWatts, 1)}W • GPU ${fmtNum(t.GpuWatts, 1)}W • Base ${fmtNum(cfg.BaseSystemWatts, 0)}W`;
+    }
 
     $("kpiTodayHours").textContent = fmtHours(s.TodayActiveHours);
     $("kpiTodayCost").textContent = fmtMoney(s.TodayCost, cur);
@@ -637,9 +644,14 @@
 
     const gTemp = t.GpuTempC;
     $("gGpuTempVal").textContent = gTemp !== null ? `${fmtNum(gTemp, 0)}°C` : "--°C";
+    if ($("gGpuTempTag")) $("gGpuTempTag").textContent = t.GpuIsIntegrated ? "iGPU Temp" : "GPU Temp";
     setGauge("gGpuTempFill", gTemp !== null ? (gTemp / 100) * 100 : 0, tempColor(gTemp, cfg.TempWarningC, cfg.TempCriticalC));
     $("gGpuLoad").textContent = `Uso: ${t.GpuLoadPercent !== null ? fmtNum(t.GpuLoadPercent, 0) + "%" : "--%"}`;
-    $("gGpuWatts").textContent = `${fmtNum(t.GpuWatts, 0)} W`;
+    if (t.GpuIsIntegrated) {
+      $("gGpuWatts").textContent = t.GpuWatts > 0.1 ? `${fmtNum(t.GpuWatts, 0)} W (CPU)` : "Integrada";
+    } else {
+      $("gGpuWatts").textContent = `${fmtNum(t.GpuWatts, 0)} W`;
+    }
 
     const wallPct = Math.min(100, (t.EstimatedWallWatts / 500) * 100);
     $("gPowerVal").textContent = `${fmtNum(t.EstimatedWallWatts, 0)} W`;
@@ -1331,9 +1343,14 @@
 
   function renderSystem(payload) {
     const t = payload.Telemetry;
+    const gpuLabel = t.GpuIsIntegrated ? "Placa de Vídeo (Integrada)" : "Placa de Vídeo (GPU Dedicada)";
+    const gpuSubParts = [];
+    if (t.GpuVramTotalMb) gpuSubParts.push(`VRAM: ${fmtNum(t.GpuVramUsedMb || 0, 0)} / ${fmtNum(t.GpuVramTotalMb, 0)} MB`);
+    if (t.SecondaryGpuName) gpuSubParts.push(`+ Integrada: ${t.SecondaryGpuName}`);
+    const gpuSub = gpuSubParts.length ? gpuSubParts.join(" • ") : (t.GpuIsIntegrated ? "Gráficos integrados ao processador" : "Monitoramento ativo");
     const specs = [
       { label: "Processador (CPU)", val: t.CpuName, sub: t.CpuClockMhz ? `Clock atual: ${fmtNum(t.CpuClockMhz, 0)} MHz` : "Monitoramento ativo" },
-      { label: "Placa de Vídeo (GPU)", val: t.GpuName, sub: t.GpuVramTotalMb ? `VRAM: ${fmtNum(t.GpuVramUsedMb || 0, 0)} / ${fmtNum(t.GpuVramTotalMb, 0)} MB` : "Monitoramento ativo" },
+      { label: gpuLabel, val: t.GpuName, sub: gpuSub },
       { label: "Placa-mãe", val: t.MotherboardName, sub: `${(t.Voltages || []).length} sensores de voltagem` },
       { label: "Memória & Discos", val: t.RamTotalGb ? `${fmtNum(t.RamTotalGb, 0)} GB RAM` : "Memória", sub: (t.StorageNames && t.StorageNames.length) ? t.StorageNames.join(" • ") : "Sem discos listados" }
     ];

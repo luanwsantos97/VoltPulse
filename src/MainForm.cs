@@ -17,7 +17,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "4.2.0";
+        public const string AppVersion = "4.2.1";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;

@@ -25,6 +25,8 @@ namespace PcPowerMonitor
         // Fallback WMI universal (garante nomes exatos de CPU, GPU, Placa-mãe e RAM em qualquer PC)
         private string _wmiCpuName;
         private string _wmiGpuName;
+        private bool _wmiGpuIsIntegrated;
+        private string _wmiSecondaryGpuName;
         private string _wmiMotherboardName;
         private double? _wmiTotalRamGb;
         private double? _wmiBatteryDesignMwh;
@@ -90,12 +92,12 @@ namespace PcPowerMonitor
                 }
                 if (gpus.Count > 0)
                 {
-                    // Prefere GPU fisica (ignora adaptadores virtuais como MuMuPlayer / Parsec / Basic Display)
-                    var realGpu = gpus.FirstOrDefault(g =>
-                        g.IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) < 0 &&
-                        g.IndexOf("Basic Display", StringComparison.OrdinalIgnoreCase) < 0 &&
-                        g.IndexOf("Remote", StringComparison.OrdinalIgnoreCase) < 0);
-                    _wmiGpuName = realGpu ?? gpus[0];
+                    string primaryName, secondaryName;
+                    bool primaryIsIntegrated;
+                    SelectPrimaryAndSecondaryGpuNames(gpus, out primaryName, out primaryIsIntegrated, out secondaryName);
+                    _wmiGpuName = primaryName;
+                    _wmiGpuIsIntegrated = primaryIsIntegrated;
+                    _wmiSecondaryGpuName = secondaryName;
                 }
             }
             catch { }
@@ -201,6 +203,8 @@ namespace PcPowerMonitor
                 Paused = paused,
                 CpuName = _wmiCpuName ?? "CPU",
                 GpuName = _wmiGpuName ?? "GPU",
+                GpuIsIntegrated = _wmiGpuIsIntegrated,
+                SecondaryGpuName = _wmiSecondaryGpuName ?? "",
                 MotherboardName = _wmiMotherboardName ?? "Motherboard"
             };
 
@@ -238,12 +242,46 @@ namespace PcPowerMonitor
             double? vramUsed = null;
             double? vramTotal = null;
 
+            // Seleciona a GPU principal (prefere dedicada em PCs/notebooks hibridos; ignora virtuais)
+            IHardware primaryGpuHw = null;
+            IHardware secondaryGpuHw = null;
+            foreach (var hw in _computer.Hardware)
+            {
+                if (!IsGpu(hw.HardwareType)) continue;
+                var kind = ClassifyGpu(hw.Name, hw.HardwareType);
+                if (kind == GpuKind.Virtual) continue;
+
+                if (kind == GpuKind.Dedicated)
+                {
+                    if (primaryGpuHw == null || ClassifyGpu(primaryGpuHw.Name, primaryGpuHw.HardwareType) != GpuKind.Dedicated)
+                    {
+                        if (primaryGpuHw != null && secondaryGpuHw == null) secondaryGpuHw = primaryGpuHw;
+                        primaryGpuHw = hw;
+                    }
+                }
+                else // Integrated
+                {
+                    if (primaryGpuHw == null)
+                        primaryGpuHw = hw;
+                    else if (secondaryGpuHw == null)
+                        secondaryGpuHw = hw;
+                }
+            }
+
+            if (primaryGpuHw != null)
+            {
+                snap.GpuName = primaryGpuHw.Name;
+                snap.GpuIsIntegrated = ClassifyGpu(primaryGpuHw.Name, primaryGpuHw.HardwareType) == GpuKind.Integrated;
+                if (secondaryGpuHw != null && !string.Equals(secondaryGpuHw.Name, primaryGpuHw.Name, StringComparison.OrdinalIgnoreCase))
+                    snap.SecondaryGpuName = secondaryGpuHw.Name;
+                else if (snap.GpuIsIntegrated)
+                    snap.SecondaryGpuName = "";
+            }
+
             foreach (var hw in _computer.Hardware)
             {
                 if (hw.HardwareType == HardwareType.Cpu)
                     snap.CpuName = hw.Name;
-                else if (IsGpu(hw.HardwareType))
-                    snap.GpuName = hw.Name;
                 else if (hw.HardwareType == HardwareType.Motherboard)
                     snap.MotherboardName = hw.Name;
                 else if (hw.HardwareType == HardwareType.Storage && !string.IsNullOrWhiteSpace(hw.Name))
@@ -263,8 +301,9 @@ namespace PcPowerMonitor
                     continue;
                 }
 
+                bool isPrimaryGpu = IsGpu(hw.HardwareType) && (primaryGpuHw == null || object.ReferenceEquals(hw, primaryGpuHw));
                 CollectHardware(
-                    hw, hw.Name, hw.HardwareType, snap,
+                    hw, hw.Name, hw.HardwareType, isPrimaryGpu, snap,
                     cpuPower, gpuPower, otherPower,
                     cpuTemps, gpuTemps, storageTemps,
                     cpuClocks, gpuClocks, cpuLoads, gpuLoads,
@@ -301,11 +340,11 @@ namespace PcPowerMonitor
             if (healthyVals.Count > 0)
                 snap.MinDiskHealthPercent = healthyVals.Min();
 
-            // Potência (evitando dupla contagem)
+            // Potência (evitando dupla contagem — inclusive em iGPUs ja somadas dentro de CPU Package)
             snap.CpuWatts = SelectPrimaryCpuWatts(cpuPower);
             snap.GpuWatts = SelectPrimaryGpuWatts(gpuPower);
             snap.OtherWatts = SelectOtherWatts(otherPower);
-            snap.ComponentsTotalWatts = snap.CpuWatts + snap.GpuWatts + snap.OtherWatts;
+            snap.ComponentsTotalWatts = ComputeComponentsTotalWatts(snap.CpuWatts, snap.GpuWatts, snap.OtherWatts, snap.GpuIsIntegrated);
 
             double eff = Math.Max(50.0, Math.Min(99.0, settings.PsuEfficiencyPercent)) / 100.0;
             double baseWatts = Math.Max(0.0, settings.BaseSystemWatts);
@@ -676,6 +715,7 @@ namespace PcPowerMonitor
             IHardware hw,
             string parentName,
             HardwareType rootType,
+            bool isPrimaryGpu,
             TelemetrySnapshot snap,
             List<SensorReading> cpuPower,
             List<SensorReading> gpuPower,
@@ -717,7 +757,7 @@ namespace PcPowerMonitor
                         var pRead = MakeReading(displayHw, hwCategory, sensor, "Potência", "W", val);
                         snap.PowerSensors.Add(pRead);
                         if (rootType == HardwareType.Cpu) cpuPower.Add(pRead);
-                        else if (IsGpu(rootType)) gpuPower.Add(pRead);
+                        else if (IsGpu(rootType)) { if (isPrimaryGpu) gpuPower.Add(pRead); }
                         else if (rootType != HardwareType.Psu) otherPower.Add(pRead);
                         break;
 
@@ -731,7 +771,7 @@ namespace PcPowerMonitor
                         var tRead = MakeReading(displayHw, hwCategory, sensor, "Temperatura", "°C", val);
                         snap.Temperatures.Add(tRead);
                         if (rootType == HardwareType.Cpu) cpuTemps.Add(tRead);
-                        else if (IsGpu(rootType)) gpuTemps.Add(tRead);
+                        else if (IsGpu(rootType)) { if (isPrimaryGpu) gpuTemps.Add(tRead); }
                         else if (rootType == HardwareType.Storage) storageTemps.Add(tRead);
                         break;
 
@@ -751,7 +791,7 @@ namespace PcPowerMonitor
                         snap.Clocks.Add(cRead);
                         if (rootType == HardwareType.Cpu && sensor.Name.IndexOf("Bus", StringComparison.OrdinalIgnoreCase) < 0)
                             cpuClocks.Add(cRead);
-                        else if (IsGpu(rootType))
+                        else if (IsGpu(rootType) && isPrimaryGpu)
                             gpuClocks.Add(cRead);
                         break;
 
@@ -767,7 +807,7 @@ namespace PcPowerMonitor
                         }
                         else if (IsGpu(rootType))
                         {
-                            gpuLoads.Add(lRead);
+                            if (isPrimaryGpu) gpuLoads.Add(lRead);
                             snap.Loads.Add(lRead);
                         }
                         else
@@ -787,7 +827,7 @@ namespace PcPowerMonitor
                         break;
 
                     case SensorType.SmallData:
-                        if (IsGpu(rootType))
+                        if (IsGpu(rootType) && isPrimaryGpu)
                         {
                             if (sensor.Name.IndexOf("Memory Used", StringComparison.OrdinalIgnoreCase) >= 0)
                                 vramUsed = val;
@@ -801,7 +841,7 @@ namespace PcPowerMonitor
             foreach (var sub in hw.SubHardware)
             {
                 CollectHardware(
-                    sub, parentName, rootType, snap,
+                    sub, parentName, rootType, isPrimaryGpu, snap,
                     cpuPower, gpuPower, otherPower,
                     cpuTemps, gpuTemps, storageTemps,
                     cpuClocks, gpuClocks, cpuLoads, gpuLoads,
@@ -825,9 +865,114 @@ namespace PcPowerMonitor
             };
         }
 
+        public enum GpuKind
+        {
+            Virtual = 0,
+            Integrated = 1,
+            Dedicated = 2
+        }
+
         private static bool IsGpu(HardwareType type)
         {
             return type == HardwareType.GpuAmd || type == HardwareType.GpuNvidia || type == HardwareType.GpuIntel;
+        }
+
+        public static GpuKind ClassifyGpu(string name, HardwareType hwType = HardwareType.Motherboard)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return GpuKind.Virtual;
+            string n = name.ToLowerInvariant();
+
+            // Adaptadores virtuais / remotos
+            if (n.Contains("virtual") || n.Contains("basic display") || n.Contains("remote") ||
+                n.Contains("parsec") || n.Contains("mumu") || n.Contains("vmware") ||
+                n.Contains("vbox") || n.Contains("citrix") || n.Contains("spacedesk") ||
+                n.Contains("idd") || n.Contains("rustdesk") || n.Contains("displaylink") ||
+                n.Contains("miracast") || n.Contains("luminoncore"))
+                return GpuKind.Virtual;
+
+            // NVIDIA dedicada
+            if (hwType == HardwareType.GpuNvidia ||
+                n.Contains("nvidia") || n.Contains("geforce") || n.Contains("rtx") ||
+                n.Contains("gtx") || n.Contains("quadro") || n.Contains("tesla") ||
+                n.Contains(" gt ") || n.Contains("mx1") || n.Contains("mx2") ||
+                n.Contains("mx3") || n.Contains("mx4") || n.Contains("mx5"))
+                return GpuKind.Dedicated;
+
+            // Intel (distingue Intel Arc dedicada de UHD/Iris/HD/Arc iGPU integrada)
+            if (hwType == HardwareType.GpuIntel || n.Contains("intel"))
+            {
+                bool isDedicatedArc =
+                    n.Contains("arc(tm) a") || n.Contains("arc a") ||
+                    n.Contains("arc(tm) b") || n.Contains("arc b") ||
+                    n.Contains("arc pro") || n.Contains("dg1") || n.Contains("dg2");
+                return isDedicatedArc ? GpuKind.Dedicated : GpuKind.Integrated;
+            }
+
+            // AMD / Radeon (distingue dedicada RX/R9/R7/Pro/Fury/Vega 56/64/VII de Ryzen G / 680M / 780M / Vega 8 integrada)
+            if (hwType == HardwareType.GpuAmd || n.Contains("amd") || n.Contains("radeon"))
+            {
+                bool isDedicatedAmd =
+                    n.Contains(" rx ") || n.Contains("rx ") ||
+                    n.Contains(" r9 ") || n.Contains(" r7 ") || n.Contains(" r5 ") ||
+                    n.Contains("hd 7") || n.Contains("hd 8") || n.Contains("hd 6") || n.Contains("hd 5") ||
+                    n.Contains("pro w") || n.Contains("pro wx") || n.Contains("firepro") ||
+                    n.Contains("fury") || n.Contains("vega 56") || n.Contains("vega 64") ||
+                    n.Contains("radeon vii") || n.Contains("instinct");
+                return isDedicatedAmd ? GpuKind.Dedicated : GpuKind.Integrated;
+            }
+
+            return GpuKind.Integrated;
+        }
+
+        public static void SelectPrimaryAndSecondaryGpuNames(
+            IEnumerable<string> gpuNames,
+            out string primaryName,
+            out bool primaryIsIntegrated,
+            out string secondaryName)
+        {
+            primaryName = "GPU";
+            primaryIsIntegrated = false;
+            secondaryName = "";
+
+            string dedicated = null;
+            string integrated = null;
+            string fallback = null;
+
+            foreach (var raw in gpuNames)
+            {
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+                string g = raw.Trim();
+                if (fallback == null) fallback = g;
+                var kind = ClassifyGpu(g);
+                if (kind == GpuKind.Virtual) continue;
+                if (kind == GpuKind.Dedicated && dedicated == null) dedicated = g;
+                else if (kind == GpuKind.Integrated && integrated == null) integrated = g;
+            }
+
+            if (dedicated != null)
+            {
+                primaryName = dedicated;
+                primaryIsIntegrated = false;
+                if (integrated != null) secondaryName = integrated;
+            }
+            else if (integrated != null)
+            {
+                primaryName = integrated;
+                primaryIsIntegrated = true;
+            }
+            else if (fallback != null)
+            {
+                primaryName = fallback;
+                primaryIsIntegrated = false;
+            }
+        }
+
+        public static double ComputeComponentsTotalWatts(double cpuWatts, double gpuWatts, double otherWatts, bool gpuIsIntegrated)
+        {
+            // Em GPUs integradas (Intel UHD/Iris, AMD Ryzen G), o consumo grafico ja esta embutido no CPU Package.
+            // Evita dupla contagem quando CPU Package esta sendo lido (> 0.5W).
+            double effectiveGpuWatts = (gpuIsIntegrated && cpuWatts > 0.5) ? 0.0 : gpuWatts;
+            return cpuWatts + effectiveGpuWatts + otherWatts;
         }
 
         private static double SelectPrimaryCpuWatts(List<SensorReading> sensors)

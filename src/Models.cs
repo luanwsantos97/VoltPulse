@@ -309,6 +309,8 @@ namespace PcPowerMonitor
 
         public string CpuName { get; set; }
         public string GpuName { get; set; }
+        public bool GpuIsIntegrated { get; set; }
+        public string SecondaryGpuName { get; set; }
         public string MotherboardName { get; set; }
         public List<string> StorageNames { get; set; }
 
