@@ -107,6 +107,7 @@ namespace PcPowerMonitor
 
         private string _activeGameProcess;
         private string _activeGameTitle;
+        private int _activeGamePid;
         private DateTime _lastSeenUtc = DateTime.MinValue;
         private DateTime _lastScanUtc = DateTime.MinValue;
 
@@ -133,6 +134,7 @@ namespace PcPowerMonitor
             {
                 _activeGameProcess = null;
                 _activeGameTitle = null;
+                _activeGamePid = 0;
                 return new GameModeStatus { Active = false };
             }
 
@@ -145,20 +147,22 @@ namespace PcPowerMonitor
 
             string detectedProc = null;
             string detectedTitle = null;
+            int detectedPid = 0;
 
             // 1. Verifica janela ativa com criterios rigorosos (zero falsos positivos)
-            CheckForeground(out detectedProc, out detectedTitle);
+            CheckForeground(out detectedProc, out detectedTitle, out detectedPid);
 
             // 2. Verifica processos com janela aberta em bibliotecas oficiais de jogos ou na whitelist de jogos
             if (detectedProc == null)
             {
-                CheckRunningGames(out detectedProc, out detectedTitle);
+                CheckRunningGames(out detectedProc, out detectedTitle, out detectedPid);
             }
 
             if (detectedProc != null)
             {
                 _activeGameProcess = detectedProc;
                 _activeGameTitle = detectedTitle;
+                _activeGamePid = detectedPid;
                 _lastSeenUtc = now;
             }
             else if (_activeGameProcess != null)
@@ -167,6 +171,7 @@ namespace PcPowerMonitor
                 {
                     _activeGameProcess = null;
                     _activeGameTitle = null;
+                    _activeGamePid = 0;
                 }
             }
 
@@ -179,16 +184,18 @@ namespace PcPowerMonitor
             return new GameModeStatus
             {
                 Active = active,
+                ProcessId = active ? _activeGamePid : 0,
                 ProcessName = _activeGameProcess ?? "",
                 GameName = _activeGameTitle ?? "",
                 QuietActive = active
             };
         }
 
-        private void CheckForeground(out string procName, out string title)
+        private void CheckForeground(out string procName, out string title, out int foundPid)
         {
             procName = null;
             title = null;
+            foundPid = 0;
             try
             {
                 IntPtr hwnd = GetForegroundWindow();
@@ -214,6 +221,7 @@ namespace PcPowerMonitor
                         {
                             procName = name;
                             title = "Minecraft";
+                            foundPid = (int)pid;
                         }
                         return;
                     }
@@ -226,16 +234,18 @@ namespace PcPowerMonitor
                     {
                         procName = name;
                         title = CleanGameTitle(proc.MainWindowTitle, exePath, name);
+                        foundPid = (int)pid;
                     }
                 }
             }
             catch { }
         }
 
-        private void CheckRunningGames(out string procName, out string title)
+        private void CheckRunningGames(out string procName, out string title, out int foundPid)
         {
             procName = null;
             title = null;
+            foundPid = 0;
             try
             {
                 var procs = Process.GetProcesses();
@@ -255,6 +265,7 @@ namespace PcPowerMonitor
                         {
                             procName = name;
                             title = CleanGameTitle(p.MainWindowTitle, path, name);
+                            foundPid = p.Id;
                             break;
                         }
                     }

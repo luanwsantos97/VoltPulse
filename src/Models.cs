@@ -24,6 +24,10 @@ namespace PcPowerMonitor
         public bool ShowOverlay { get; set; }
         public int OverlayX { get; set; }
         public int OverlayY { get; set; }
+        public bool OverlayVertical { get; set; }
+        public bool OverlayMicroMode { get; set; }
+        public bool OverlayAutoHide { get; set; }
+        public double OverlayOpacity { get; set; }
 
         // v4.0 new settings
         public bool AutoGameMode { get; set; }
@@ -40,11 +44,17 @@ namespace PcPowerMonitor
         public bool RestoreStockOnExit { get; set; }
         public bool UltraLowBackgroundMode { get; set; }
 
-        // v4.2 Eco Engine Pro (Idle AFK + Thermal Guard)
+        // v4.2 Eco Engine Pro (Idle AFK + Thermal Guard + Custom Tuning Persistence)
         public bool AutoIdleEco { get; set; }
         public int AutoIdleMinutes { get; set; }
         public bool ThermalGuardEnabled { get; set; }
         public double ThermalGuardLimitC { get; set; }
+        public int CustomCpuMaxPercent { get; set; }
+        public int CustomCpuBoostMode { get; set; }
+        public int CustomCpuEpp { get; set; }
+        public bool CustomPassiveCooling { get; set; }
+        public bool CustomPcieAspmEco { get; set; }
+        public int CustomGpuPowerPercent { get; set; }
 
         public AppSettings()
         {
@@ -62,6 +72,10 @@ namespace PcPowerMonitor
             ShowOverlay = false;
             OverlayX = -1;
             OverlayY = -1;
+            OverlayVertical = false;
+            OverlayMicroMode = false;
+            OverlayAutoHide = false;
+            OverlayOpacity = 0.84;
             AutoGameMode = true;
             AutoOverlayInGame = false;
             QuietStart = true;
@@ -77,6 +91,12 @@ namespace PcPowerMonitor
             AutoIdleMinutes = 10;
             ThermalGuardEnabled = true;
             ThermalGuardLimitC = 85.0;
+            CustomCpuMaxPercent = 99;
+            CustomCpuBoostMode = 3;
+            CustomCpuEpp = 65;
+            CustomPassiveCooling = false;
+            CustomPcieAspmEco = false;
+            CustomGpuPowerPercent = 85;
         }
 
         public void ApplySystemLocaleDefaults()
@@ -223,6 +243,7 @@ namespace PcPowerMonitor
     public class GameModeStatus
     {
         public bool Active { get; set; }
+        public int ProcessId { get; set; }
         public string GameName { get; set; }
         public string ProcessName { get; set; }
         public bool QuietActive { get; set; }
@@ -338,6 +359,7 @@ namespace PcPowerMonitor
         public double? GpuClockMhz { get; set; }
         public double? GpuFanRpm { get; set; }
         public double? MaxFanRpm { get; set; }
+        public int? CurrentFps { get; set; }
 
         public double NetDownloadKBps { get; set; }
         public double NetUploadKBps { get; set; }

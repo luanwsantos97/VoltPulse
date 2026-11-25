@@ -1,7 +1,7 @@
 ﻿param(
     [switch]$ReleaseZip,
     [switch]$Installer,
-    [string]$Version = "4.2.0"
+    [string]$Version = "4.3.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -53,6 +53,7 @@ $sources = @(
     (Join-Path $srcDir "EnergyStorage.cs"),
     (Join-Path $srcDir "DependencyManager.cs"),
     (Join-Path $srcDir "GameDetector.cs"),
+    (Join-Path $srcDir "FpsMonitor.cs"),
     (Join-Path $srcDir "SafePowerTuner.cs"),
     (Join-Path $srcDir "ProcessMonitor.cs"),
     (Join-Path $srcDir "LocalApiServer.cs"),

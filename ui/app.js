@@ -303,8 +303,14 @@
     });
   }
 
+  function markTuningDirty() {
+    state.tuningDirty = true;
+    if ($("tunLastMsg")) $("tunLastMsg").textContent = "Alterações pendentes — clique em Aplicar Ajuste Seguro";
+  }
+
   document.querySelectorAll(".profile-card[data-prof]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      state.tuningDirty = false;
       const prof = btn.dataset.prof;
       const autoEco = $("chkAutoEcoOutsideGames") ? $("chkAutoEcoOutsideGames").checked : false;
       sendHost({ action: "applyTuningProfile", profile: prof, autoEco });
@@ -323,22 +329,35 @@
 
   if ($("tunCpuPct")) {
     $("tunCpuPct").addEventListener("input", () => {
+      markTuningDirty();
       $("tunCpuPctLabel").textContent = `${$("tunCpuPct").value}%`;
     });
   }
   if ($("tunCpuEpp")) {
     $("tunCpuEpp").addEventListener("input", () => {
+      markTuningDirty();
       $("tunCpuEppLabel").textContent = `${$("tunCpuEpp").value}`;
     });
   }
+  if ($("tunCpuBoost")) {
+    $("tunCpuBoost").addEventListener("change", markTuningDirty);
+  }
+  if ($("chkTunPassive")) {
+    $("chkTunPassive").addEventListener("change", markTuningDirty);
+  }
+  if ($("chkTunAspm")) {
+    $("chkTunAspm").addEventListener("change", markTuningDirty);
+  }
   if ($("tunGpuPct")) {
     $("tunGpuPct").addEventListener("input", () => {
+      markTuningDirty();
       const v = parseInt($("tunGpuPct").value, 10) || 100;
       $("tunGpuPctLabel").textContent = `${v}% (${v === 100 ? "Stock" : (v - 100) + "%"})`;
     });
   }
   if ($("btnApplyCustomTuning")) {
     $("btnApplyCustomTuning").addEventListener("click", () => {
+      state.tuningDirty = false;
       sendHost({
         action: "applyTuningCustom",
         cpuMaxPercent: parseInt($("tunCpuPct").value, 10) || 99,
@@ -354,6 +373,7 @@
   }
   if ($("btnRestoreStock")) {
     $("btnRestoreStock").addEventListener("click", () => {
+      state.tuningDirty = false;
       sendHost({ action: "restoreStockTuning" });
       showToast("Padrão de fábrica (Stock) restaurado!");
     });
@@ -1242,21 +1262,23 @@
     if ($("numThermalGuardC") && document.activeElement !== $("numThermalGuardC"))
       $("numThermalGuardC").value = cfg.ThermalGuardLimitC || 85;
 
-    if ($("tunCpuPct") && document.activeElement !== $("tunCpuPct")) {
-      $("tunCpuPct").value = tu.CpuMaxPercent || 100;
-      $("tunCpuPctLabel").textContent = `${tu.CpuMaxPercent || 100}%`;
+    if (!state.tuningDirty) {
+      if ($("tunCpuPct") && document.activeElement !== $("tunCpuPct")) {
+        $("tunCpuPct").value = tu.CpuMaxPercent || 100;
+        $("tunCpuPctLabel").textContent = `${tu.CpuMaxPercent || 100}%`;
+      }
+      if ($("tunCpuEpp") && document.activeElement !== $("tunCpuEpp")) {
+        $("tunCpuEpp").value = tu.CpuEpp || 0;
+        $("tunCpuEppLabel").textContent = `${tu.CpuEpp || 0}`;
+      }
+      if ($("tunCpuBoost") && document.activeElement !== $("tunCpuBoost")) {
+        $("tunCpuBoost").value = String(tu.CpuBoostMode !== undefined ? tu.CpuBoostMode : 2);
+      }
+      if ($("chkTunPassive") && document.activeElement !== $("chkTunPassive"))
+        $("chkTunPassive").checked = !!tu.PassiveCooling;
+      if ($("chkTunAspm") && document.activeElement !== $("chkTunAspm"))
+        $("chkTunAspm").checked = !!tu.PcieAspmEco;
     }
-    if ($("tunCpuEpp") && document.activeElement !== $("tunCpuEpp")) {
-      $("tunCpuEpp").value = tu.CpuEpp || 0;
-      $("tunCpuEppLabel").textContent = `${tu.CpuEpp || 0}`;
-    }
-    if ($("tunCpuBoost") && document.activeElement !== $("tunCpuBoost")) {
-      $("tunCpuBoost").value = String(tu.CpuBoostMode !== undefined ? tu.CpuBoostMode : 2);
-    }
-    if ($("chkTunPassive") && document.activeElement !== $("chkTunPassive"))
-      $("chkTunPassive").checked = !!tu.PassiveCooling;
-    if ($("chkTunAspm") && document.activeElement !== $("chkTunAspm"))
-      $("chkTunAspm").checked = !!tu.PcieAspmEco;
 
     if ($("tuningGpuBadge")) {
       if (tu.HasDedicatedGpu) {
@@ -1275,7 +1297,7 @@
     if ($("tunGpuPct")) {
       $("tunGpuPct").min = String(tu.GpuMinPercent || 70);
       $("tunGpuPct").disabled = !tu.GpuPowerLimitSupported;
-      if (document.activeElement !== $("tunGpuPct")) {
+      if (!state.tuningDirty && document.activeElement !== $("tunGpuPct")) {
         const gp = tu.GpuPowerLimitPercent || 100;
         $("tunGpuPct").value = gp;
         if (tu.GpuPowerLimitSupported) {
@@ -1290,7 +1312,7 @@
     if ($("tunGpuNote")) {
       $("tunGpuNote").textContent = tu.SafetyNote || "";
     }
-    if ($("tunLastMsg") && tu.LastActionMessage) {
+    if ($("tunLastMsg") && !state.tuningDirty && tu.LastActionMessage) {
       $("tunLastMsg").textContent = tu.LastActionMessage;
     }
   }
@@ -1676,7 +1698,15 @@
   }
 
   ["chartLivePower", "chartLiveTemps", "chartOverviewBars", "chartEnergy14Days", "chartHourlyToday"].forEach(attachChartHover);
-  window.addEventListener("resize", () => redrawAllCharts());
+  let resizeRaf = 0;
+  window.addEventListener("resize", () => {
+    if (window.innerWidth < 300 || window.innerHeight < 200) return;
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => {
+      resizeRaf = 0;
+      redrawAllCharts();
+    });
+  });
 
   function formatDateBr(iso) {
     if (!iso || iso.length < 10) return iso || "";
@@ -1706,6 +1736,12 @@
         updateSplashProgress(event.data.Percent || 50, event.data.Message || "");
       } else if (event.data.Type === "toast") {
         showToast(event.data.Message || "");
+      } else if (event.data.Type === "windowState") {
+        if ($("winMaxIcon")) {
+          $("winMaxIcon").innerHTML = event.data.IsMaximized
+            ? '<rect x="1.5" y="3" width="7.5" height="7.5" fill="none" stroke="currentColor" stroke-width="1.3"/><polyline points="3.5,3 3.5,1.5 10.5,1.5 10.5,8.5 9,8.5" fill="none" stroke="currentColor" stroke-width="1.3"/>'
+            : '<rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.3"/>';
+        }
       } else if (event.data.Type === "telemetry") {
         render(event.data);
       }

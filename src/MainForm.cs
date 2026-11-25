@@ -17,13 +17,14 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "4.2.5";
+        public const string AppVersion = "4.3.0";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
         private readonly EnergyStorage _storage;
         private readonly AppSettings _settings;
         private readonly GameDetector _gameDetector = new GameDetector();
+        private readonly FpsMonitor _fpsMonitor = new FpsMonitor();
         private readonly SafePowerTuner _tuner = new SafePowerTuner();
         private readonly LocalApiServer _localApi = new LocalApiServer();
         private bool _inBackgroundEcoMode;
@@ -55,8 +56,10 @@ namespace PcPowerMonitor
         private Label _loadingLabel;
         private OverlayForm _overlayForm;
         private Size _savedNormalSize;
-        private FormWindowState _prevWindowState = FormWindowState.Normal;
+        private bool _wasMinimized;
+        private bool _inUserResize;
         private bool _restoringNormalSize;
+        private bool? _lastPushedMaximized;
 
         private NotifyIcon _trayIcon;
         private ToolStripMenuItem _trayPauseItem;
@@ -165,6 +168,7 @@ namespace PcPowerMonitor
         private const int DWMWCP_ROUND = 2;
         private const int WM_NCLBUTTONDOWN = 0xA1;
         private const int HTCAPTION = 0x2;
+        private const int WM_WINDOWPOSCHANGING = 0x0046;
         private const int WM_NCCALCSIZE = 0x0083;
         private const int WM_NCHITTEST = 0x0084;
         private const int WM_NCACTIVATE = 0x0086;
@@ -186,6 +190,21 @@ namespace PcPowerMonitor
         private const uint SWP_NOZORDER = 0x0004;
         private const uint SWP_NOACTIVATE = 0x0010;
         private const uint SWP_FRAMECHANGED = 0x0020;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WINDOWPOS
+        {
+            public IntPtr hwnd;
+            public IntPtr hwndInsertAfter;
+            public int x;
+            public int y;
+            public int cx;
+            public int cy;
+            public uint flags;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool IsIconic(IntPtr hWnd);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct MARGINS
@@ -259,11 +278,12 @@ namespace PcPowerMonitor
             ForeColor = Color.FromArgb(241, 245, 249);
             Font = new Font("Segoe UI", 9.5f);
             Icon = _baseAppIcon;
-            Padding = new Padding(3); // Margem sutil de 3px para permitir resize pelas bordas em janela frameless
+            Padding = Padding.Empty;
 
             ApplyWindowChrome(_settings.Theme != "light");
 
             BuildWebHost();
+            LayoutWebView();
             SetupTray();
 
             if (_settings.ShowOverlay)
@@ -275,34 +295,35 @@ namespace PcPowerMonitor
             // Prioridade abaixo do normal para nunca disputar CPU com jogos ou trabalho
             try { Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal; } catch { }
 
-            if (_settings.AutoEcoOutsideGames)
-                _tuner.ApplyProfile("eco", true);
-            else if (!string.IsNullOrEmpty(_settings.TuningProfile) && _settings.TuningProfile != "stock")
-                _tuner.ApplyProfile(_settings.TuningProfile, false);
+            if (_settings.AutoEcoOutsideGames || (!string.IsNullOrEmpty(_settings.TuningProfile) && _settings.TuningProfile != "stock"))
+                ApplyConfiguredEcoOrCustom("startup");
 
             _pollTimer = new Timer { Interval = Math.Max(1000, _settings.PollIntervalSeconds * 1000) };
             _pollTimer.Tick += (s, e) => PollAndPush();
 
+            ResizeBegin += (s, e) => { _inUserResize = true; };
+
             ResizeEnd += (s, e) =>
             {
+                _inUserResize = false;
                 if (WindowState == FormWindowState.Normal && Width >= MinimumSize.Width && Height >= MinimumSize.Height)
                     _savedNormalSize = Size;
             };
 
             Resize += (s, e) =>
             {
-                if (WindowState == FormWindowState.Normal && _prevWindowState == FormWindowState.Minimized && !_restoringNormalSize)
+                if (WindowState == FormWindowState.Minimized)
                 {
-                    if (_savedNormalSize.Width >= MinimumSize.Width && _savedNormalSize.Height >= MinimumSize.Height && Size != _savedNormalSize)
-                    {
-                        _restoringNormalSize = true;
-                        Size = _savedNormalSize;
-                        _restoringNormalSize = false;
-                    }
+                    _wasMinimized = true;
+                    // Nao redimensiona o WebView2 para 154x22 ao minimizar: evita re-layout e "pulo/scroll" ao restaurar!
+                    return;
                 }
-                _prevWindowState = WindowState;
-                Padding = WindowState == FormWindowState.Maximized ? new Padding(0) : new Padding(3);
-                if (_webReady) PollAndPush(true);
+                if (WindowState == FormWindowState.Normal)
+                {
+                    _wasMinimized = false;
+                }
+                LayoutWebView();
+                PushWindowState();
             };
 
             Shown += (s, e) =>
@@ -334,6 +355,7 @@ namespace PcPowerMonitor
                 {
                     if (Width >= MinimumSize.Width && Height >= MinimumSize.Height)
                         _savedNormalSize = Size;
+                    if (cmd == SC_MINIMIZE) _wasMinimized = true;
                 }
                 else if (cmd == SC_RESTORE)
                 {
@@ -346,8 +368,30 @@ namespace PcPowerMonitor
                         Size = _savedNormalSize;
                         _restoringNormalSize = false;
                     }
+                    if (!IsIconic(Handle)) _wasMinimized = false;
                     return;
                 }
+            }
+
+            // Intercepta o tamanho ANTES de ser aplicado na janela/WebView2 para impedir qualquer frame inflado (+16x39)
+            if (m.Msg == WM_WINDOWPOSCHANGING && !_inUserResize &&
+                _savedNormalSize.Width >= MinimumSize.Width && _savedNormalSize.Height >= MinimumSize.Height)
+            {
+                try
+                {
+                    var wp = (WINDOWPOS)Marshal.PtrToStructure(m.LParam, typeof(WINDOWPOS));
+                    if ((wp.flags & SWP_NOSIZE) == 0 && wp.cx >= MinimumSize.Width && wp.cy >= MinimumSize.Height &&
+                        !IsZoomed(Handle) && _wasMinimized)
+                    {
+                        if (wp.cx != _savedNormalSize.Width || wp.cy != _savedNormalSize.Height)
+                        {
+                            wp.cx = _savedNormalSize.Width;
+                            wp.cy = _savedNormalSize.Height;
+                            Marshal.StructureToPtr(wp, m.LParam, false);
+                        }
+                    }
+                }
+                catch { }
             }
 
             // Remove 100% da barra de titulo nativa preservando animacoes DWM (minimizar/maximizar/Aero Snap)
@@ -441,13 +485,49 @@ namespace PcPowerMonitor
 
             _webView = new WebView2
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.None,
+                Anchor = AnchorStyles.None,
                 DefaultBackgroundColor = Color.FromArgb(11, 16, 27),
                 Visible = false
             };
 
             Controls.Add(_webView);
             Controls.Add(_loadingPanel);
+        }
+
+        private void LayoutWebView()
+        {
+            if (_webView == null || _webView.IsDisposed) return;
+            if (WindowState == FormWindowState.Minimized) return;
+
+            int cw = ClientSize.Width;
+            int ch = ClientSize.Height;
+            if (cw < 300 || ch < 200) return;
+
+            int pad = WindowState == FormWindowState.Maximized ? 0 : 3;
+            var target = new Rectangle(pad, pad, Math.Max(1, cw - pad * 2), Math.Max(1, ch - pad * 2));
+            if (_webView.Bounds != target)
+            {
+                _webView.Bounds = target;
+            }
+        }
+
+        private void PushWindowState()
+        {
+            if (!_webReady || _webView == null || _webView.CoreWebView2 == null) return;
+            bool isMax = WindowState == FormWindowState.Maximized;
+            if (_lastPushedMaximized.HasValue && _lastPushedMaximized.Value == isMax) return;
+            _lastPushedMaximized = isMax;
+            try
+            {
+                var obj = new Dictionary<string, object>
+                {
+                    { "Type", "windowState" },
+                    { "IsMaximized", isMax }
+                };
+                _webView.CoreWebView2.PostWebMessageAsJson(_json.Serialize(obj));
+            }
+            catch { }
         }
 
         private async void InitializeWebViewAsync()
@@ -482,6 +562,7 @@ namespace PcPowerMonitor
                 core.WebMessageReceived += OnWebMessageReceived;
                 core.NavigationCompleted += (s, e) =>
                 {
+                    LayoutWebView();
                     _webView.Visible = true;
                     _loadingPanel.Visible = false;
                 };
@@ -676,6 +757,12 @@ namespace PcPowerMonitor
                         _thermalGuardActive = false;
                         _settings.TuningProfile = "custom";
                         _settings.AutoEcoOutsideGames = autoEcoC;
+                        _settings.CustomCpuMaxPercent = cpuPct;
+                        _settings.CustomCpuBoostMode = cpuBoost;
+                        _settings.CustomCpuEpp = cpuEpp;
+                        _settings.CustomPassiveCooling = passiveCool;
+                        _settings.CustomPcieAspmEco = pcieAspm;
+                        _settings.CustomGpuPowerPercent = gpuPct;
                         _tuner.SetAutomationFlags(false, false, "manual");
                         _tuner.ApplyCustom("custom", cpuPct, 5, cpuBoost, cpuEpp, passiveCool, pcieAspm, gpuPct, autoEcoC, "manual");
                         _storage.SaveSettings(_settings);
@@ -816,14 +903,21 @@ namespace PcPowerMonitor
                 if (_overlayForm == null || _overlayForm.IsDisposed)
                 {
                     _overlayForm = new OverlayForm(
-                        _settings.OverlayX,
-                        _settings.OverlayY,
+                        _settings,
                         RestoreFromTray,
                         () => { _overlayAutoShownByGame = false; SetOverlayVisible(false, true); PollAndPush(true); },
                         (x, y) =>
                         {
                             _settings.OverlayX = x;
                             _settings.OverlayY = y;
+                            _storage.SaveSettings(_settings);
+                        },
+                        (vert, micro, autoHide, opacity) =>
+                        {
+                            _settings.OverlayVertical = vert;
+                            _settings.OverlayMicroMode = micro;
+                            _settings.OverlayAutoHide = autoHide;
+                            _settings.OverlayOpacity = opacity;
                             _storage.SaveSettings(_settings);
                         });
                 }
@@ -832,6 +926,7 @@ namespace PcPowerMonitor
             }
             else
             {
+                _fpsMonitor.Stop();
                 if (_overlayForm != null && !_overlayForm.IsDisposed)
                 {
                     _overlayForm.Hide();
@@ -907,12 +1002,15 @@ namespace PcPowerMonitor
             if (_paused && !forcePush) return;
 
             bool uiVisible = Visible && WindowState != FormWindowState.Minimized;
+            bool overlayVisible = _overlayForm != null && !_overlayForm.IsDisposed && _overlayForm.Visible;
             bool bgUltraLow = !uiVisible && _settings.UltraLowBackgroundMode;
 
-            // Ajusta intervalo adaptativo automaticamente (5s na bandeja vs intervalo rapido na tela)
-            int targetInterval = bgUltraLow
-                ? Math.Max(5000, _settings.PollIntervalSeconds * 1000)
-                : Math.Max(1000, _settings.PollIntervalSeconds * 1000);
+            // Ajusta intervalo adaptativo: 1s em jogo c/ Mini Widget, 5s na bandeja sem widget, ou intervalo configurado
+            int targetInterval = (overlayVisible && _lastGameMode.Active)
+                ? 1000
+                : ((bgUltraLow && !overlayVisible)
+                    ? Math.Max(5000, _settings.PollIntervalSeconds * 1000)
+                    : Math.Max(1000, _settings.PollIntervalSeconds * 1000));
             if (_pollTimer.Interval != targetInterval)
                 _pollTimer.Interval = targetInterval;
 
@@ -927,6 +1025,21 @@ namespace PcPowerMonitor
             HandleAutoGameMode(snap);
             _tuner.UpdateStockBaseline(snap.EstimatedWallWatts);
             HandleEcoAutomations(snap);
+
+            // Re-checa visibilidade do overlay (pode ter aberto automaticamente via AutoOverlayInGame)
+            overlayVisible = _overlayForm != null && !_overlayForm.IsDisposed && _overlayForm.Visible;
+
+            // Contador de FPS 100% seguro via ETW oficial do Windows (ativo APENAS durante jogo + Mini Widget visivel!)
+            if (overlayVisible && _lastGameMode.Active && _lastGameMode.ProcessId > 4)
+            {
+                _fpsMonitor.EnsureTracking(_lastGameMode.ProcessId);
+                snap.CurrentFps = _fpsMonitor.GetCurrentFps();
+            }
+            else
+            {
+                _fpsMonitor.Stop();
+                snap.CurrentFps = null;
+            }
 
             if (!_paused && elapsed > 0.2)
             {
@@ -1032,10 +1145,10 @@ namespace PcPowerMonitor
                     _storage.StopSession();
                 }
 
-                // Ao fechar o jogo, volta automaticamente para o perfil Eco seguro!
+                // Ao fechar o jogo, volta automaticamente para o perfil Eco ou ajuste fino personalizado!
                 if (_settings.AutoEcoOutsideGames)
                 {
-                    _tuner.ApplyProfile("eco", true, "game_auto");
+                    ApplyConfiguredEcoOrCustom("game_auto");
                 }
 
                 if (_overlayAutoShownByGame)
@@ -1043,6 +1156,32 @@ namespace PcPowerMonitor
                     _overlayAutoShownByGame = false;
                     SetOverlayVisible(false, false);
                 }
+            }
+        }
+
+        private void ApplyConfiguredEcoOrCustom(string reason)
+        {
+            if (string.Equals(_settings.TuningProfile, "custom", StringComparison.OrdinalIgnoreCase))
+            {
+                _tuner.ApplyCustom(
+                    "custom",
+                    _settings.CustomCpuMaxPercent > 0 ? _settings.CustomCpuMaxPercent : 99,
+                    5,
+                    _settings.CustomCpuBoostMode,
+                    _settings.CustomCpuEpp,
+                    _settings.CustomPassiveCooling,
+                    _settings.CustomPcieAspmEco,
+                    _settings.CustomGpuPowerPercent > 0 ? _settings.CustomGpuPowerPercent : 85,
+                    _settings.AutoEcoOutsideGames,
+                    reason);
+            }
+            else if (string.Equals(_settings.TuningProfile, "ultra_eco", StringComparison.OrdinalIgnoreCase))
+            {
+                _tuner.ApplyProfile("ultra_eco", _settings.AutoEcoOutsideGames, reason);
+            }
+            else
+            {
+                _tuner.ApplyProfile("eco", _settings.AutoEcoOutsideGames, reason);
             }
         }
 
@@ -1305,6 +1444,14 @@ namespace PcPowerMonitor
             Show();
             ShowInTaskbar = true;
             WindowState = FormWindowState.Normal;
+            if (_savedNormalSize.Width >= MinimumSize.Width && _savedNormalSize.Height >= MinimumSize.Height && Size != _savedNormalSize)
+            {
+                _restoringNormalSize = true;
+                Size = _savedNormalSize;
+                _restoringNormalSize = false;
+            }
+            LayoutWebView();
+            PushWindowState();
             Activate();
             if (_webView == null || _webView.CoreWebView2 == null)
                 InitializeWebViewAsync();
@@ -1333,6 +1480,7 @@ namespace PcPowerMonitor
                 _trayIcon.Dispose();
             }
             if (_monitor != null) _monitor.Dispose();
+            _fpsMonitor.Dispose();
             _tuner.Dispose();
             Application.Exit();
         }
@@ -1358,6 +1506,7 @@ namespace PcPowerMonitor
                 try { _tuner.RestoreStock(); } catch { }
             }
             _storage.Flush();
+            _fpsMonitor.Dispose();
             if (_monitor != null) _monitor.Dispose();
             if (_overlayForm != null && !_overlayForm.IsDisposed) _overlayForm.Close();
             if (_trayIcon != null) _trayIcon.Visible = false;
