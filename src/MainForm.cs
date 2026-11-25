@@ -17,7 +17,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "4.2.3";
+        public const string AppVersion = "4.2.4";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
@@ -61,15 +61,30 @@ namespace PcPowerMonitor
         private Icon _baseAppIcon;
         private IntPtr _dynamicTrayIconHandle = IntPtr.Zero;
 
-        // Win32 Frameless Drag, Resize, Rounded Corners & Proper Maximize
+        // Win32 Frameless Drag, Resize, Native DWM Animations, Rounded Corners & Proper Maximize
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS pMarInset);
 
         [DllImport("user32.dll")]
         private static extern bool ReleaseCapture();
 
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsZoomed(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern bool DestroyIcon(IntPtr handle);
@@ -147,33 +162,71 @@ namespace PcPowerMonitor
         private const int DWMWCP_ROUND = 2;
         private const int WM_NCLBUTTONDOWN = 0xA1;
         private const int HTCAPTION = 0x2;
-        private const int WM_NCHITTEST = 0x84;
-        private const int WM_GETMINMAXINFO = 0x24;
+        private const int WM_NCCALCSIZE = 0x0083;
+        private const int WM_NCHITTEST = 0x0084;
+        private const int WM_NCACTIVATE = 0x0086;
+        private const int WM_SYSCOMMAND = 0x0112;
+        private const int SC_MINIMIZE = 0xF020;
+        private const int SC_MAXIMIZE = 0xF030;
+        private const int SC_RESTORE = 0xF120;
+        private const int WS_CAPTION = 0x00C00000;
+        private const int WS_SYSMENU = 0x00080000;
+        private const int WS_THICKFRAME = 0x00040000;
         private const int WS_MINIMIZEBOX = 0x00020000;
+        private const int WS_MAXIMIZEBOX = 0x00010000;
         private const int CS_DBLCLKS = 0x0008;
+        private const int SM_CXSIZEFRAME = 32;
+        private const int SM_CYSIZEFRAME = 33;
+        private const int SM_CXPADDEDBORDER = 92;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOZORDER = 0x0004;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_FRAMECHANGED = 0x0020;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MARGINS
+        {
+            public int Left;
+            public int Right;
+            public int Top;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NCCALCSIZE_PARAMS
+        {
+            public RECT rgrc0;
+            public RECT rgrc1;
+            public RECT rgrc2;
+            public IntPtr lppos;
+        }
 
         protected override CreateParams CreateParams
         {
             get
             {
                 var cp = base.CreateParams;
-                cp.Style |= WS_MINIMIZEBOX;
+                cp.Style |= WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU;
                 cp.ClassStyle |= CS_DBLCLKS;
                 return cp;
             }
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct POINT { public int X; public int Y; }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct MINMAXINFO
+        protected override void OnHandleCreated(EventArgs e)
         {
-            public POINT ptReserved;
-            public POINT ptMaxSize;
-            public POINT ptMaxPosition;
-            public POINT ptMinTrackSize;
-            public POINT ptMaxTrackSize;
+            base.OnHandleCreated(e);
+            ApplyWindowChrome(_settings != null && _settings.Theme != "light");
+            SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
 
         public MainForm(bool startMinimized)
@@ -183,7 +236,7 @@ namespace PcPowerMonitor
             _baseAppIcon = LoadAppIcon();
 
             Text = "VoltPulse — PC Power, Voltage & Thermal Monitor";
-            FormBorderStyle = FormBorderStyle.None;
+            FormBorderStyle = FormBorderStyle.Sizable;
             Size = new Size(1260, 820);
             MinimumSize = new Size(960, 640);
             StartPosition = FormStartPosition.CenterScreen;
@@ -191,7 +244,7 @@ namespace PcPowerMonitor
             ForeColor = Color.FromArgb(241, 245, 249);
             Font = new Font("Segoe UI", 9.5f);
             Icon = _baseAppIcon;
-            Padding = new Padding(4); // Margem sutil de 4px para permitir resize pelas bordas em janela frameless
+            Padding = new Padding(3); // Margem sutil de 3px para permitir resize pelas bordas em janela frameless
 
             ApplyWindowChrome(_settings.Theme != "light");
 
@@ -217,7 +270,7 @@ namespace PcPowerMonitor
 
             Resize += (s, e) =>
             {
-                Padding = WindowState == FormWindowState.Maximized ? new Padding(0) : new Padding(4);
+                Padding = WindowState == FormWindowState.Maximized ? new Padding(0) : new Padding(3);
                 if (_webReady) PollAndPush(true);
             };
 
@@ -243,25 +296,34 @@ namespace PcPowerMonitor
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == WM_GETMINMAXINFO)
+            // Remove 100% da barra de titulo nativa preservando animacoes DWM (minimizar/maximizar/Aero Snap)
+            if (m.Msg == WM_NCCALCSIZE && m.WParam != IntPtr.Zero)
             {
-                try
+                if (IsZoomed(Handle))
                 {
-                    var mmi = (MINMAXINFO)Marshal.PtrToStructure(m.LParam, typeof(MINMAXINFO));
-                    var scr = Screen.FromHandle(Handle);
-                    var wa = scr.WorkingArea;
-                    var bounds = scr.Bounds;
-                    mmi.ptMaxPosition.X = Math.Abs(wa.Left - bounds.Left);
-                    mmi.ptMaxPosition.Y = Math.Abs(wa.Top - bounds.Top);
-                    mmi.ptMaxSize.X = wa.Width;
-                    mmi.ptMaxSize.Y = wa.Height;
-                    mmi.ptMinTrackSize.X = MinimumSize.Width;
-                    mmi.ptMinTrackSize.Y = MinimumSize.Height;
-                    Marshal.StructureToPtr(mmi, m.LParam, true);
-                    m.Result = IntPtr.Zero;
-                    return;
+                    try
+                    {
+                        var ncp = (NCCALCSIZE_PARAMS)Marshal.PtrToStructure(m.LParam, typeof(NCCALCSIZE_PARAMS));
+                        int pad = GetSystemMetrics(SM_CXPADDEDBORDER);
+                        int fx = GetSystemMetrics(SM_CXSIZEFRAME) + pad;
+                        int fy = GetSystemMetrics(SM_CYSIZEFRAME) + pad;
+                        ncp.rgrc0.Left += fx;
+                        ncp.rgrc0.Top += fy;
+                        ncp.rgrc0.Right -= fx;
+                        ncp.rgrc0.Bottom -= fy;
+                        Marshal.StructureToPtr(ncp, m.LParam, false);
+                    }
+                    catch { }
                 }
-                catch { }
+                m.Result = IntPtr.Zero;
+                return;
+            }
+
+            if (m.Msg == WM_NCACTIVATE)
+            {
+                // Impede o Windows de desenhar barra/borda nativa ao focar ou desfocar a janela
+                m.Result = (IntPtr)1;
+                return;
             }
 
             if (m.Msg == WM_NCHITTEST && WindowState == FormWindowState.Normal)
@@ -296,6 +358,8 @@ namespace PcPowerMonitor
                 DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref val, sizeof(int));
                 int corner = DWMWCP_ROUND;
                 DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+                var margins = new MARGINS { Left = 0, Right = 0, Top = 0, Bottom = 1 };
+                DwmExtendFrameIntoClientArea(Handle, ref margins);
             }
             catch { }
 
@@ -486,26 +550,16 @@ namespace PcPowerMonitor
                         break;
 
                     case "winDrag":
-                        if (WindowState == FormWindowState.Maximized)
-                        {
-                            // Restaura suavemente antes de arrastar
-                            var cursor = Cursor.Position;
-                            double ratio = (double)cursor.X / Math.Max(1, Width);
-                            WindowState = FormWindowState.Normal;
-                            Left = (int)(cursor.X - Width * ratio);
-                            Top = Math.Max(0, cursor.Y - 18);
-                        }
                         ReleaseCapture();
                         SendMessage(Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
                         break;
 
                     case "winMinimize":
-                        WindowState = FormWindowState.Minimized;
+                        PostMessage(Handle, WM_SYSCOMMAND, (IntPtr)SC_MINIMIZE, IntPtr.Zero);
                         break;
 
                     case "winMaximize":
-                        WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
-                        PollAndPush(true);
+                        PostMessage(Handle, WM_SYSCOMMAND, (IntPtr)(WindowState == FormWindowState.Maximized ? SC_RESTORE : SC_MAXIMIZE), IntPtr.Zero);
                         break;
 
                     case "winClose":
