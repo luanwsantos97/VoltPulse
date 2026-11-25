@@ -126,7 +126,11 @@ namespace PcPowerMonitor
 
             if (savedX >= 0 && savedY >= 0 && IsPointVisibleOnAnyScreen(savedX, savedY))
             {
-                Location = new Point(savedX, savedY);
+                var scr = Screen.FromPoint(new Point(savedX + 20, savedY + 10));
+                var wa = scr.WorkingArea;
+                int cx = Math.Max(wa.Left, Math.Min(savedX, wa.Right - Width));
+                int cy = Math.Max(wa.Top, Math.Min(savedY, wa.Bottom - Height));
+                Location = new Point(cx, cy);
             }
             else
             {

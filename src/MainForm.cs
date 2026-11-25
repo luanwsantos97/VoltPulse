@@ -17,7 +17,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "4.2.4";
+        public const string AppVersion = "4.2.5";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
@@ -54,6 +54,9 @@ namespace PcPowerMonitor
         private Panel _loadingPanel;
         private Label _loadingLabel;
         private OverlayForm _overlayForm;
+        private Size _savedNormalSize;
+        private FormWindowState _prevWindowState = FormWindowState.Normal;
+        private bool _restoringNormalSize;
 
         private NotifyIcon _trayIcon;
         private ToolStripMenuItem _trayPauseItem;
@@ -229,16 +232,28 @@ namespace PcPowerMonitor
             SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
 
+        protected override void SetClientSizeCore(int x, int y)
+        {
+            // Com WM_NCCALCSIZE removendo a area nao-cliente, Size == ClientSize.
+            // Evita que o WinForms some +39px de altura e +16px de largura a cada minimize/restore!
+            SetBoundsCore(Left, Top, x, y, BoundsSpecified.Size);
+        }
+
         public MainForm(bool startMinimized)
         {
             _storage = new EnergyStorage();
             _settings = _storage.LoadSettings();
             _baseAppIcon = LoadAppIcon();
 
+            var wa = Screen.PrimaryScreen.WorkingArea;
+            int initW = Math.Max(960, Math.Min(1240, wa.Width - 40));
+            int initH = Math.Max(640, Math.Min(780, wa.Height - 40));
+
             Text = "VoltPulse — PC Power, Voltage & Thermal Monitor";
             FormBorderStyle = FormBorderStyle.Sizable;
-            Size = new Size(1260, 820);
-            MinimumSize = new Size(960, 640);
+            Size = new Size(initW, initH);
+            _savedNormalSize = Size;
+            MinimumSize = new Size(960, 620);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.FromArgb(11, 16, 27);
             ForeColor = Color.FromArgb(241, 245, 249);
@@ -268,8 +283,24 @@ namespace PcPowerMonitor
             _pollTimer = new Timer { Interval = Math.Max(1000, _settings.PollIntervalSeconds * 1000) };
             _pollTimer.Tick += (s, e) => PollAndPush();
 
+            ResizeEnd += (s, e) =>
+            {
+                if (WindowState == FormWindowState.Normal && Width >= MinimumSize.Width && Height >= MinimumSize.Height)
+                    _savedNormalSize = Size;
+            };
+
             Resize += (s, e) =>
             {
+                if (WindowState == FormWindowState.Normal && _prevWindowState == FormWindowState.Minimized && !_restoringNormalSize)
+                {
+                    if (_savedNormalSize.Width >= MinimumSize.Width && _savedNormalSize.Height >= MinimumSize.Height && Size != _savedNormalSize)
+                    {
+                        _restoringNormalSize = true;
+                        Size = _savedNormalSize;
+                        _restoringNormalSize = false;
+                    }
+                }
+                _prevWindowState = WindowState;
                 Padding = WindowState == FormWindowState.Maximized ? new Padding(0) : new Padding(3);
                 if (_webReady) PollAndPush(true);
             };
@@ -296,6 +327,29 @@ namespace PcPowerMonitor
 
         protected override void WndProc(ref Message m)
         {
+            if (m.Msg == WM_SYSCOMMAND)
+            {
+                int cmd = m.WParam.ToInt32() & 0xFFF0;
+                if ((cmd == SC_MINIMIZE || cmd == SC_MAXIMIZE) && WindowState == FormWindowState.Normal)
+                {
+                    if (Width >= MinimumSize.Width && Height >= MinimumSize.Height)
+                        _savedNormalSize = Size;
+                }
+                else if (cmd == SC_RESTORE)
+                {
+                    base.WndProc(ref m);
+                    if (WindowState == FormWindowState.Normal && !_restoringNormalSize &&
+                        _savedNormalSize.Width >= MinimumSize.Width && _savedNormalSize.Height >= MinimumSize.Height &&
+                        Size != _savedNormalSize)
+                    {
+                        _restoringNormalSize = true;
+                        Size = _savedNormalSize;
+                        _restoringNormalSize = false;
+                    }
+                    return;
+                }
+            }
+
             // Remove 100% da barra de titulo nativa preservando animacoes DWM (minimizar/maximizar/Aero Snap)
             if (m.Msg == WM_NCCALCSIZE && m.WParam != IntPtr.Zero)
             {
