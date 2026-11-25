@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>VoltPulse — Guia Didático Completo para Iniciantes (v4.2)</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-dark: #0B1220;
+      --bg-dark-2: #111C30;
+      --ink: #0F172A;
+      --ink-soft: #334155;
+      --ink-muted: #64748B;
+      --border: #E2E8F0;
+      --surface: #F8FAFC;
+      --cyan: #0284C7;
+      --cyan-bright: #38BDF8;
+      --cyan-bg: #F0F9FF;
+      --green: #059669;
+      --green-bright: #34D399;
+      --green-bg: #ECFDF5;
+      --amber: #D97706;
+      --amber-bg: #FFFBEB;
+      --purple: #7C3AED;
+      --purple-bg: #F5F3FF;
+      --rose: #E11D48;
+      --rose-bg: #FFF1F2;
+    }
+
+    body {
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background: #FFFFFF;
+      line-height: 1.48;
+      font-size: 10pt;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* ================= PAGE STRUCTURE ================= */
+    .page {
+      width: 210mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+      background: #FFFFFF;
+    }
+    .page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    .page-inner {
+      padding: 15mm 15mm 16mm 15mm;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Running Header & Footer for content pages */
+    .running-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+      border-bottom: 1.5px solid var(--border);
+      font-size: 8pt;
+      color: var(--ink-muted);
+    }
+    .running-header .brand-mini {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: 0.2px;
+    }
+    .running-footer {
+      margin-top: auto;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 7.8pt;
+      color: var(--ink-muted);
+    }
+    .page-num {
+      font-weight: 700;
+      color: var(--cyan);
+      background: var(--cyan-bg);
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    /* ================= COVER PAGE ================= */
+    .cover {
+      background: radial-gradient(circle at 85% 12%, rgba(56, 189, 248, 0.22), transparent 45%),
+                  radial-gradient(circle at 12% 85%, rgba(52, 211, 153, 0.18), transparent 45%),
+                  linear-gradient(155deg, #070D19 0%, #0F1A2E 52%, #0A1526 100%);
+      color: #F8FAFC;
+      padding: 20mm 18mm 18mm 18mm;
+      display: flex;
+      flex-direction: column;
+    }
+    .cover-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18mm;
+    }
+    .cover-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cover-logo-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(56,189,248,0.18), rgba(52,211,153,0.18));
+      border: 1.5px solid rgba(56,189,248,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cover-brand-name {
+      font-size: 19pt;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      color: #FFFFFF;
+    }
+    .cover-brand-sub {
+      font-size: 8.5pt;
+      color: #94A3B8;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+    .cover-badge {
+      background: rgba(56, 189, 248, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #7DD3FC;
+      font-size: 8.5pt;
+      font-weight: 700;
+      padding: 6px 13px;
+      border-radius: 99px;
+      letter-spacing: 0.5px;
+    }
+
+    .cover-hero {
+      margin-bottom: 11mm;
+    }
+    .cover-kicker {
+      color: #34D399;
+      font-weight: 700;
+      font-size: 10pt;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+    .cover-title {
+      font-size: 31pt;
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin-bottom: 14px;
+      color: #FFFFFF;
+    }
+    .cover-title span {
+      color: #38BDF8;
+    }
+    .cover-subtitle {
+      font-size: 12pt;
+      color: #CBD5E1;
+      line-height: 1.5;
+      max-width: 158mm;
+    }
+
+    .cover-pills {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 9px;
+      margin-bottom: 11mm;
+    }
+    .cover-pill {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(148,163,184,0.2);
+      border-radius: 10px;
+      padding: 10px 10px;
+    }
+    .cover-pill strong {
+      display: block;
+      font-size: 9.2pt;
+      color: #FFFFFF;
+      margin-bottom: 2px;
+    }
+    .cover-pill span {
+      font-size: 7.8pt;
+      color: #94A3B8;
+      line-height: 1.3;
+      display: block;
+    }
+
+    .cover-preview {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1.5px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+      margin-bottom: 10mm;
+      background: #060B14;
+    }
+    .cover-preview img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .cover-toc {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 12px;
+      padding: 13px 16px;
+      margin-top: auto;
+    }
+    .cover-toc-title {
+      font-size: 8.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #38BDF8;
+      margin-bottom: 9px;
+    }
+    .toc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 18px;
+    }
+    .toc-item {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      font-size: 8.8pt;
+      color: #E2E8F0;
+      border-bottom: 1px dashed rgba(148,163,184,0.2);
+      padding-bottom: 3px;
+    }
+    .toc-item b {
+      color: #34D399;
+      margin-right: 5px;
+    }
+    .toc-item .pg {
+      color: #7DD3FC;
+      font-weight: 700;
+      font-size: 8.2pt;
+    }
+    .cover-footer {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8pt;
+      color: #94A3B8;
+    }
+    .cover-footer code {
+      color: #7DD3FC;
+      font-family: Consolas, monospace;
+      font-size: 8pt;
+    }
+
+    /* ================= TYPOGRAPHY & CHAPTERS ================= */
+    .chapter-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 7.8pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      color: var(--cyan);
+      background: var(--cyan-bg);
+      border: 1px solid #BAE6FD;
+      padding: 3px 10px;
+      border-radius: 99px;
+      margin-bottom: 6px;
+    }
+    .chapter-tag.green { color: var(--green); background: var(--green-bg); border-color: #A7F3D0; }
+    .chapter-tag.amber { color: var(--amber); background: var(--amber-bg); border-color: #FDE68A; }
+    .chapter-tag.purple { color: var(--purple); background: var(--purple-bg); border-color: #DDD6FE; }
+
+    h1.sec-title {
+      font-size: 17.5pt;
+      font-weight: 800;
+      color: var(--ink);
+      letter-spacing: -0.4px;
+      line-height: 1.18;
+      margin-bottom: 6px;
+    }
+    p.lead {
+      font-size: 9.8pt;
+      color: var(--ink-soft);
+      margin-bottom: 12px;
+      line-height: 1.48;
+    }
+    h2.sub-title {
+      font-size: 11.5pt;
+      font-weight: 800;
+      color: var(--ink);
+      margin: 12px 0 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    h3.mini-title {
+      font-size: 9.8pt;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    /* ================= CARDS & CALLOUTS ================= */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 11px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 13px;
+    }
+    .card.white {
+      background: #FFFFFF;
+    }
+    .card.cyan {
+      background: var(--cyan-bg);
+      border-color: #BAE6FD;
+    }
+    .card.green {
+      background: var(--green-bg);
+      border-color: #A7F3D0;
+    }
+    .card.amber {
+      background: var(--amber-bg);
+      border-color: #FDE68A;
+    }
+    .card.purple {
+      background: var(--purple-bg);
+      border-color: #DDD6FE;
+    }
+    .card.dark {
+      background: #0F172A;
+      border-color: #1E293B;
+      color: #F8FAFC;
+    }
+
+    .callout {
+      border-left: 4px solid var(--cyan);
+      background: var(--cyan-bg);
+      padding: 9px 12px;
+      border-radius: 0 8px 8px 0;
+      margin: 9px 0;
+      font-size: 9.1pt;
+      color: #0C4A6E;
+    }
+    .callout.green {
+      border-left-color: var(--green);
+      background: var(--green-bg);
+      color: #064E3B;
+    }
+    .callout.amber {
+      border-left-color: var(--amber);
+      background: var(--amber-bg);
+      color: #78350F;
+    }
+    .callout.purple {
+      border-left-color: var(--purple);
+      background: var(--purple-bg);
+      color: #4C1D95;
+    }
+    .callout strong {
+      font-weight: 700;
+    }
+
+    /* ================= STEPS ================= */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 8px 0;
+    }
+    .step-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 8px 11px;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0284C7, #059669);
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 9.5pt;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+    .step-body {
+      font-size: 9.1pt;
+      color: var(--ink-soft);
+    }
+    .step-body strong {
+      color: var(--ink);
+    }
+
+    /* ================= FORMULA BOX ================= */
+    .formula-hero {
+      background: linear-gradient(135deg, #0B1220, #132238);
+      color: #FFFFFF;
+      border-radius: 12px;
+      padding: 13px 16px;
+      text-align: center;
+      margin: 9px 0;
+      border: 1.5px solid #38BDF8;
+    }
+    .formula-hero .f-label {
+      font-size: 7.8pt;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #7DD3FC;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .formula-hero .f-eq {
+      font-size: 13.5pt;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.2px;
+    }
+    .formula-hero .f-eq span.hi {
+      color: #34D399;
+    }
+    .formula-hero .f-eq span.cy {
+      color: #38BDF8;
+    }
+    .formula-hero .f-sub {
+      font-size: 8.4pt;
+      color: #CBD5E1;
+      margin-top: 4px;
+    }
+
+    /* ================= MOCK ELECTRICITY BILL ================= */
+    .bill-box {
+      background: #FFFFFF;
+      border: 1.5px dashed #94A3B8;
+      border-radius: 10px;
+      padding: 10px 13px;
+      font-size: 8.6pt;
+    }
+    .bill-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #CBD5E1;
+      padding-bottom: 5px;
+      margin-bottom: 7px;
+      font-weight: 800;
+      color: var(--ink);
+      font-size: 9pt;
+    }
+    .bill-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 6px;
+      border-radius: 5px;
+      margin-bottom: 2px;
+      color: var(--ink-soft);
+    }
+    .bill-row.hl-cyan {
+      background: #E0F2FE;
+      color: #0369A1;
+      font-weight: 800;
+      border: 1px solid #7DD3FC;
+    }
+    .bill-row.hl-green {
+      background: #D1FAE5;
+      color: #047857;
+      font-weight: 800;
+      border: 1px solid #6EE7B7;
+    }
+    .bill-row.strike {
+      color: #94A3B8;
+      font-size: 8pt;
+    }
+
+    /* ================= TABLES ================= */
+    table.tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.6pt;
+      margin: 6px 0;
+    }
+    table.tbl th {
+      background: #0F172A;
+      color: #FFFFFF;
+      text-align: left;
+      padding: 6px 8px;
+      font-weight: 700;
+      font-size: 8.1pt;
+    }
+    table.tbl th:first-child { border-radius: 6px 0 0 0; }
+    table.tbl th:last-child { border-radius: 0 6px 0 0; }
+    table.tbl td {
+      padding: 5.5px 8px;
+      border-bottom: 1px solid var(--border);
+      color: var(--ink-soft);
+      vertical-align: middle;
+    }
+    table.tbl tr:nth-child(even) td {
+      background: #F8FAFC;
+    }
+    table.tbl td strong {
+      color: var(--ink);
+    }
+    .num { text-align: right !important; font-variant-numeric: tabular-nums; }
+
+    /* ================= SCREENSHOTS ================= */
+    .shot-frame {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1.5px solid #CBD5E1;
+      background: #0B1220;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+      margin: 6px 0;
+    }
+    .shot-frame img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .shot-caption {
+      background: #0F172A;
+      color: #CBD5E1;
+      font-size: 7.9pt;
+      padding: 5px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .shot-caption strong { color: #38BDF8; }
+
+    /* ================= TAGS / CHIPS / BADGES ================= */
+    .chip {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 99px;
+      font-size: 7.6pt;
+      font-weight: 700;
+      background: #E2E8F0;
+      color: var(--ink);
+    }
+    .chip.green { background: #D1FAE5; color: #065F46; }
+    .chip.cyan { background: #E0F2FE; color: #075985; }
+    .chip.amber { background: #FEF3C7; color: #92400E; }
+    .chip.rose { background: #FFE4E6; color: #9F1239; }
+    .chip.purple { background: #EDE9FE; color: #5B21B6; }
+
+    .mono {
+      font-family: Consolas, "Cascadia Code", monospace;
+      font-size: 8.4pt;
+      background: #F1F5F9;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #0F172A;
+      border: 1px solid #E2E8F0;
+    }
+
+    ul.clean {
+      padding-left: 16px;
+      margin: 4px 0;
+    }
+    ul.clean li {
+      margin-bottom: 4px;
+      font-size: 8.9pt;
+      color: var(--ink-soft);
+    }
+    ul.clean li strong { color: var(--ink); }
+
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      font-size: 8.9pt;
+      background: #FFFFFF;
+      border: 1px solid #A7F3D0;
+      border-radius: 8px;
+      padding: 7px 10px;
+    }
+    .check-box {
+      width: 15px;
+      height: 15px;
+      border: 2px solid var(--green);
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .flag-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ======================================================================= -->
+<!-- PÁGINA 1: CAPA PROFISSIONAL                                             -->
+<!-- ======================================================================= -->
+<section class="page cover">
+  <div class="cover-top">
+    <div class="cover-logo-row">
+      <div class="cover-logo-box">
+        <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
+          <path d="M18.5 3L7 17.5h8L13.5 29 25 14.5h-8L18.5 3z" fill="url(#vpCovGrad)" />
+          <defs>
+            <linearGradient id="vpCovGrad" x1="7" y1="3" x2="25" y2="29" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#38BDF8"/>
+              <stop offset="1" stop-color="#34D399"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div>
+        <div class="cover-brand-name">VoltPulse</div>
+        <div class="cover-brand-sub">PC Power, Voltage, Thermal &amp; Eco Monitor</div>
+      </div>
+    </div>
+    <div class="cover-badge">GUIA DIDÁTICO • VERSÃO 4.2</div>
+  </div>
+
+  <div class="cover-hero">
+    <div class="cover-kicker">Manual Ilustrado Passo a Passo para Iniciantes</div>
+    <div class="cover-title">
+      Descubra quanto seu PC<br />
+      <span>gasta na conta de luz</span><br />
+      e economize com segurança
+    </div>
+    <div class="cover-subtitle">
+      Aprenda do zero a instalar, configurar sua tarifa real de energia, descobrir a eficiência da sua fonte,
+      calcular o consumo base extra e usar o modo Eco Inteligente — tudo em linguagem simples, sem termos complicados.
+    </div>
+  </div>
+
+  <div class="cover-pills">
+    <div class="cover-pill">
+      <strong>⚡ Conta em Reais</strong>
+      <span>Veja o custo exato do PC por hora, dia, semana e mês</span>
+    </div>
+    <div class="cover-pill">
+      <strong>🛡️ Eco 100% Seguro</strong>
+      <span>Reduza calor e consumo sem risco de tela azul</span>
+    </div>
+    <div class="cover-pill">
+      <strong>💾 Saúde do SSD</strong>
+      <span>Acompanhe vida útil, temperatura e gravações (TBW)</span>
+    </div>
+    <div class="cover-pill">
+      <strong>🍃 Ultra-Leve</strong>
+      <span>Quase zero CPU/RAM na bandeja e 100% gratuito</span>
+    </div>
+  </div>
+
+  <div class="cover-preview">
+    <img src="file:///C:/Users/Root/.gemini/antigravity/scratch/PcPowerMonitor/assets/screenshots/dashboard.jpg" alt="Tela Principal do VoltPulse" />
+  </div>
+
+  <div class="cover-toc">
+    <div class="cover-toc-title">O que você vai aprender neste guia</div>
+    <div class="toc-grid">
+      <div class="toc-item"><span><b>01</b> O que é o VoltPulse e como instalar</span><span class="pg">Pág. 2</span></div>
+      <div class="toc-item"><span><b>05</b> Conhecendo o Dashboard e Custos</span><span class="pg">Pág. 5</span></div>
+      <div class="toc-item"><span><b>02</b> Como descobrir sua tarifa real (R$/kWh)</span><span class="pg">Pág. 3</span></div>
+      <div class="toc-item"><span><b>06</b> Eco &amp; Undervolt Seguro (Economia)</span><span class="pg">Pág. 6</span></div>
+      <div class="toc-item"><span><b>03</b> Eficiência da Fonte (80 Plus) explicada</span><span class="pg">Pág. 4</span></div>
+      <div class="toc-item"><span><b>07</b> Temperaturas, Voltagens e SSD</span><span class="pg">Pág. 7</span></div>
+      <div class="toc-item"><span><b>04</b> Como calcular o Consumo Base Extra</span><span class="pg">Pág. 4</span></div>
+      <div class="toc-item"><span><b>08</b> Configurações, Overlay e Checklist</span><span class="pg">Pág. 8</span></div>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <span>Material de apoio gratuito • Windows 10 / 11 (64-bit)</span>
+    <span>Download oficial: <code>github.com/luanwsantos97/VoltPulse</code></span>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<!-- PÁGINA 2: O QUE É + DOWNLOAD E INSTALAÇÃO                               -->
+<!-- ======================================================================= -->
+<section class="page">
+  <div class="page-inner">
+    <div class="running-header">
+      <div class="brand-mini">⚡ VoltPulse — Guia Didático para Iniciantes</div>
+      <div>Capítulo 01 • Apresentação e Instalação</div>
+    </div>
+
+    <div class="chapter-tag">Capítulo 01</div>
+    <h1 class="sec-title">O que é o VoltPulse e por que ele é diferente?</h1>
+    <p class="lead">
+      Imagine juntar o <strong>painel completo de um carro</strong> (temperatura do motor, velocidade, desgaste)
+      com um <strong>medidor de energia exclusivo para o seu computador</strong> — tudo numa tela bonita,
+      em português, gratuita e que quase não pesa no PC. Esse é o <strong>VoltPulse</strong>.
+    </p>
+
+    <div class="grid-3" style="margin-bottom: 10px;">
+      <div class="card cyan">
+        <h3 class="mini-title">🔌 Quanto o PC gasta em R$</h3>
+        <p style="font-size:8.6pt;color:var(--ink-soft)">
+          Mostra em tempo real os <strong>Watts puxados da tomada</strong> e converte automaticamente para
+          <strong>Reais (R$)</strong> por hora, hoje, últimos 7 dias e projeção do mês inteiro.
+        </p>
+      </div>
+      <div class="card green">
+        <h3 class="mini-title">🌿 Economia Inteligente</h3>
+        <p style="font-size:8.6pt;color:var(--ink-soft)">
+          Ativa perfis seguros de economia quando você está estudando ou navegando e libera
+          <strong>100% da potência</strong> automaticamente assim que você abre um jogo.
+        </p>
+      </div>
+      <div class="card purple">
+        <h3 class="mini-title">🩺 Saúde Completa do PC</h3>
+        <p style="font-size:8.6pt;color:var(--ink-soft)">
+          Acompanha temperaturas da CPU/GPU, voltagens da fonte, vida útil do SSD (S.M.A.R.T.),
+          bateria de notebook, internet e quais programas estão pesando agora.
+        </p>
+      </div>
+    </div>
+
+    <h2 class="sub-title">📦 Passo a Passo: Como Baixar e Instalar (Sem Erro!)</h2>
+
+    <div class="steps">
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Baixe no site oficial do GitHub:</strong> acesse
+          <span class="mono">github.com/luanwsantos97/VoltPulse</span>, clique em <strong>Releases</strong> (no lado direito)
+          e baixe o arquivo instalador <span class="mono">VoltPulse-Setup-v4.2.0.exe</span>.
+          <br /><span style="font-size:8.3pt;color:var(--ink-muted)">
+            💡 Existe também o arquivo <span class="mono">.zip</span> (versão portátil) para quem prefere apenas descompactar e usar sem instalar.
+          </span>
+        </div>
+      </div>
+
+      <div class="step-row">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Se aparecer a tela azul do Windows ("O Windows protegeu o computador"):</strong>
+          isso é <strong>totalmente normal</strong> em programas gratuitos e independentes (open-source) que não pagam
+          certificado corporativo anual da Microsoft. Clique em <strong>"Mais informações"</strong> e depois em
+          <strong>"Executar assim mesmo"</strong>. Todo o código-fonte do VoltPulse é aberto e auditável no GitHub.
+        </div>
+      </div>
+
+      <div class="step-row">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Aceite o Driver PawnIO durante a instalação (Recomendado):</strong>
+          o instalador vai perguntar se deseja instalar o <strong>PawnIO</strong>. Marque <strong>Sim</strong>!
+          Ele é um driver moderno, seguro e assinado que permite ao Windows liberar a leitura real de temperatura,
+          voltagem e consumo (Watts) da sua CPU e placa-mãe.
+        </div>
+      </div>
+
+      <div class="step-row">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Abra o VoltPulse (Modo Administrador):</strong>
+          ao abrir pelo atalho da Área de Trabalho ou Menu Iniciar, clique em <strong>Sim</strong> na permissão do Windows.
+          Você verá no canto superior direito o selo verde <span class="chip green">● Modo Admin</span> — sinal de que
+          todos os sensores do seu PC estão liberados!
+        </div>
+      </div>
+    </div>
+
+    <div class="callout amber" style="margin-top: 8px;">
+      <strong>⚠️ Atenção — Requisitos Mínimos:</strong> funciona em qualquer PC ou Notebook com
+      <strong>Windows 10 ou Windows 11 (64 bits)</strong>. O componente gráfico WebView2 já vem instalado no Windows moderno;
+      se o seu PC for muito antigo, o próprio VoltPulse avisa e oferece o botão para instalar automaticamente.
+    </div>
+
+    <div class="grid-2" style="margin-top: 8px;">
+      <div class="card white">
+        <h3 class="mini-title">🖥️ Funciona em qualquer processador e placa?</h3>
+        <ul class="clean">
+          <li><strong>CPUs:</strong> Intel (Core i3/i5/i7/i9, Pentium, Xeon) e AMD (Ryzen, Athlon).</li>
+          <li><strong>GPUs:</strong> NVIDIA GeForce, AMD Radeon e gráficos integrados Intel/AMD.</li>
+          <li><strong>Notebooks:</strong> detecta automaticamente a bateria e mostra desgaste real!</li>
+        </ul>
+      </div>
+      <div class="card white">
+        <h3 class="mini-title">🍃 Ele vai deixar meu PC lento?</h3>
+        <ul class="clean">
+          <li><strong>Não!</strong> Quando você fecha a janela no <span class="mono">X</span>, ele vai para a bandeja do relógio.</li>
+          <li>Congela a interface gráfica, usa <strong>EcoQoS</strong> e gasta quase <strong>0% de CPU</strong>.</li>
+          <li>Salva dados só a cada 3 minutos para proteger a vida útil do seu SSD (-90% escritas).</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="running-footer">
+      <span>VoltPulse v4.2 • Guia Didático para Iniciantes</span>
+      <span class="page-num">Página 2 de 8</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<!-- PÁGINA 3: COMO CALCULAR E ENCONTRAR A TARIFA DE ENERGIA (R$/kWh)        -->
+<!-- ======================================================================= -->
+<section class="page">
+  <div class="page-inner">
+    <div class="running-header">
+      <div class="brand-mini">⚡ VoltPulse — Guia Didático para Iniciantes</div>
+      <div>Capítulo 02 • Como Descobrir Sua Tarifa de Energia (R$/kWh)</div>
+    </div>
+
+    <div class="chapter-tag green">Capítulo 02 • O Passo Mais Importante</div>
+    <h1 class="sec-title">Como encontrar e calcular a tarifa da sua conta de luz</h1>
+    <p class="lead">
+      Para o VoltPulse calcular <strong>exatamente quantos Reais</strong> seu computador gasta, você precisa informar o
+      preço de <strong>1 kWh</strong> na sua cidade. A maioria das pessoas olha o número errado na fatura — veja abaixo
+      o jeito <strong>mais fácil e 100% preciso</strong> de descobrir o valor real que sai do seu bolso!
+    </p>
+
+    <div class="card cyan" style="margin-bottom: 7px; padding: 8px 11px;">
+      <h3 class="mini-title">💡 Em 10 segundos: o que é "kWh" (Quilowatt-hora)?</h3>
+      <p style="font-size:8.6pt;color:#0C4A6E">
+        É simplesmente a "unidade de medida" que a companhia elétrica cobra de você.
+        <strong>1 kWh = 1.000 Watts ligados durante 1 hora.</strong><br />
+        Exemplo: se o seu PC consome <strong>200 Watts</strong> na tomada, ele precisa ficar ligado por
+        <strong>5 horas</strong> (200 W × 5 h = 1.000 Wh) para gastar <strong>1 kWh</strong>. Se o seu kWh custa
+        <strong>R$ 0,94</strong>, essas 5 horas custaram exatamente R$ 0,94!
+      </p>
+    </div>
+
+    <div class="formula-hero" style="padding: 10px 14px; margin: 7px 0;">
+      <div class="f-label">⭐ Fórmula de Ouro — Tarifa Real com Impostos e Bandeira Inclusos</div>
+      <div class="f-eq" style="font-size: 11.4pt;">
+        <span class="hi">Tarifa Real (R$/kWh)</span> = <span class="cy">Valor Total da Energia (R$)</span> ÷ <span class="cy">Consumo do Mês (kWh)</span>
+      </div>
+      <div class="f-sub">
+        Dica: subtraia a "Taxa de Iluminação Pública (CIP/COSIP)" do valor total antes de dividir para ficar ainda mais exato!
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin: 7px 0;">
+      <!-- Mini Fatura Ilustrativa -->
+      <div class="bill-box" style="padding: 9px 11px;">
+        <div class="bill-head">
+          <span>📄 Exemplo de Conta de Luz (Brasil)</span>
+          <span class="chip cyan">Onde olhar</span>
+        </div>
+        <div class="bill-row hl-cyan">
+          <span>1. Consumo faturado no mês:</span>
+          <span style="white-space:nowrap">250 kWh</span>
+        </div>
+        <div class="bill-row strike">
+          <span>Tarifa TE + TUSD (sem impostos — não use só essa!):</span>
+          <span style="white-space:nowrap">R$ 0,68</span>
+        </div>
+        <div class="bill-row">
+          <span>Energia + Tributos (ICMS, PIS, COFINS):</span>
+          <span style="white-space:nowrap">R$ 223,75</span>
+        </div>
+        <div class="bill-row">
+          <span>Adicional Bandeira Tarifária:</span>
+          <span style="white-space:nowrap">R$ 11,25</span>
+        </div>
+        <div class="bill-row strike">
+          <span>Iluminação Pública (CIP/COSIP — taxa fixa):</span>
+          <span style="white-space:nowrap">R$ 15,00</span>
+        </div>
+        <div class="bill-row hl-green" style="margin-top:4px">
+          <span>2. Total Energia (R$ 250 − R$ 15 CIP):</span>
+          <span style="white-space:nowrap">R$ 235,00</span>
+        </div>
+      </div>
+
+      <!-- Passo a passo do cálculo -->
+      <div class="card white" style="display:flex;flex-direction:column;justify-content:space-between;padding:9px 11px">
+        <div>
+          <h3 class="mini-title">🧮 Fazendo a conta do exemplo ao lado:</h3>
+          <div style="font-size:8.5pt;color:var(--ink-soft);margin-top:4px">
+            <p style="margin-bottom:4px"><strong>Passo 1:</strong> Ache o <strong>Consumo em kWh</strong> do mês.<br />No exemplo: <span class="mono">250 kWh</span>.</p>
+            <p style="margin-bottom:4px"><strong>Passo 2:</strong> Pegue o <strong>Total a Pagar</strong> e tire a Iluminação Pública (taxa fixa da prefeitura).<br />No exemplo: <span class="mono">250,00 − 15,00 = R$ 235,00</span>.</p>
+            <p style="margin-bottom:4px"><strong>Passo 3:</strong> Divida na calculadora do celular:<br /><strong style="color:var(--green);font-size:10pt">235,00 ÷ 250 = R$ 0,94 por kWh!</strong></p>
+          </div>
+        </div>
+        <div style="background:var(--green-bg);border:1px solid #A7F3D0;border-radius:7px;padding:5px 8px;font-size:8.2pt;color:#065F46">
+          <strong>✅ Pronto!</strong> Digite <strong>0,94</strong> no campo <em>Tarifa de energia elétrica (por kWh)</em> em Configurações do VoltPulse.
+        </div>
+      </div>
+    </div>
+
+    <div class="callout amber" style="margin: 6px 0; padding: 7px 11px; font-size: 8.6pt;">
+      <strong>Por que NÃO devo copiar o "preço unitário" pequeno impresso na conta?</strong><br />
+      Na maioria das concessionárias (Enel, Cemig, CPFL, Copel, Light, Equatorial, Neoenergia), o valor unitário
+      (TE + TUSD) aparece <strong>sem ICMS (17% a 25%), sem PIS/COFINS e sem Bandeira Tarifária</strong>. Se você colocar
+      R$ 0,68 em vez de R$ 0,94, o VoltPulse vai mostrar um custo quase 30% menor que o real!
+    </div>
+
+    <h2 class="sub-title" style="margin: 6px 0 4px 0; font-size: 10.6pt;">🗺️ Não está com a conta de luz agora? Use a tabela de referência!</h2>
+    <div class="grid-2">
+      <div>
+        <table class="tbl" style="margin:0; font-size:8.1pt;">
+          <thead>
+            <tr>
+              <th>Região / Estado (Média c/ Impostos)</th>
+              <th class="num" style="white-space:nowrap">Tarifa / kWh</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Sul</strong> (PR, SC, RS — Copel, Celesc, RGE)</td><td class="num" style="white-space:nowrap"><strong>R$ 0,80 – 0,92</strong></td></tr>
+            <tr><td><strong>Sudeste</strong> (SP, MG, RJ, ES — Enel, CPFL, Cemig)</td><td class="num" style="white-space:nowrap"><strong>R$ 0,88 – 1,12</strong></td></tr>
+            <tr><td><strong>Centro-Oeste</strong> (GO, DF, MT, MS)</td><td class="num" style="white-space:nowrap"><strong>R$ 0,85 – 1,02</strong></td></tr>
+            <tr><td><strong>Nordeste</strong> (BA, PE, CE, RN, MA...)</td><td class="num" style="white-space:nowrap"><strong>R$ 0,86 – 1,05</strong></td></tr>
+            <tr><td><strong>Norte</strong> (PA, AM, TO, RO...)</td><td class="num" style="white-space:nowrap"><strong>R$ 0,95 – 1,18</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <table class="tbl" style="margin:0; font-size:8.1pt;">
+          <thead>
+            <tr>
+              <th>Bandeira Tarifária (ANEEL)</th>
+              <th class="num" style="white-space:nowrap">Acréscimo / kWh</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="flag-dot" style="background:#10B981"></span><strong>Verde</strong> (condições favoráveis)</td><td class="num" style="white-space:nowrap">+ R$ 0,00</td></tr>
+            <tr><td><span class="flag-dot" style="background:#F59E0B"></span><strong>Amarela</strong> (alerta moderado)</td><td class="num" style="white-space:nowrap">+ R$ 0,019</td></tr>
+            <tr><td><span class="flag-dot" style="background:#EF4444"></span><strong>Vermelha Patamar 1</strong></td><td class="num" style="white-space:nowrap">+ R$ 0,045</td></tr>
+            <tr><td><span class="flag-dot" style="background:#991B1B"></span><strong>Vermelha Patamar 2</strong></td><td class="num" style="white-space:nowrap">+ R$ 0,079</td></tr>
+            <tr><td colspan="2" style="font-size:7.6pt;color:var(--ink-muted)">Dica: no app da sua concessionária (Enel, Cemig, Copel, etc.) você baixa a 2ª via em PDF em 1 minuto.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="running-footer">
+      <span>VoltPulse v4.2 • Guia Didático para Iniciantes</span>
+      <span class="page-num">Página 3 de 8</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<!-- PÁGINA 4: EFICIÊNCIA DA FONTE (PSU %) + CONSUMO BASE EXTRA (W)          -->
+<!-- ======================================================================= -->
+<section class="page">
+  <div class="page-inner">
+    <div class="running-header">
+      <div class="brand-mini">⚡ VoltPulse — Guia Didático para Iniciantes</div>
+      <div>Capítulos 03 &amp; 04 • Eficiência da Fonte e Consumo Base Extra</div>
+    </div>
+
+    <div class="chapter-tag">Capítulos 03 &amp; 04 • Calibrando a Precisão</div>
+    <h1 class="sec-title">Eficiência da Fonte (PSU %) e Consumo Base Extra (W)</h1>
+    <p class="lead">
+      Na tela de <strong>Configurações</strong> do VoltPulse existem dois campos que deixam a estimativa na tomada
+      quase idêntica à de um aparelho medidor físico (wattímetro). Veja como preencher ambos em menos de 1 minuto!
+    </p>
+
+    <!-- PARTE A: EFICIÊNCIA DA FONTE -->
+    <h2 class="sub-title" style="margin-top:4px">🔌 1. Como descobrir a "Eficiência da fonte PSU (%)"</h2>
+    <p style="font-size:8.9pt;color:var(--ink-soft);margin-bottom:6px">
+      A fonte do PC transforma a energia da parede (110V/220V) para as peças internas (12V/5V). Nessa conversão,
+      uma pequena parte vira calor. <strong>Exemplo:</strong> se o PC precisa de 100 W e sua fonte tem
+      <strong>85% de eficiência</strong>, ela puxa <strong>118 W da tomada</strong> (os outros 18 W viram calor).
+    </p>
+
+    <div class="grid-2" style="margin-bottom:8px">
+      <table class="tbl" style="margin:0">
+        <thead>
+          <tr>
+            <th>Selo da sua Fonte (Olhe a caixa ou etiqueta)</th>
+            <th class="num">Colocar no App</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Fonte genérica / sem selo 80 Plus</td><td class="num"><strong>75%</strong></td></tr>
+          <tr><td><span class="chip">80 Plus White / Standard</span></td><td class="num"><strong>80%</strong></td></tr>
+          <tr><td><span class="chip amber">80 Plus Bronze</span> (mais comum!)</td><td class="num"><strong>85%</strong></td></tr>
+          <tr><td><span class="chip">80 Plus Silver</span></td><td class="num"><strong>87%</strong></td></tr>
+          <tr><td><span class="chip amber" style="background:#FEF08A;color:#854D0E">80 Plus Gold</span></td><td class="num"><strong>90%</strong></td></tr>
+          <tr><td><span class="chip cyan">80 Plus Platinum / Titanium</span></td><td class="num"><strong>92% – 94%</strong></td></tr>
+        </tbody>
+      </table>
+
+      <div class="card white" style="display:flex;flex-direction:column;justify-content:space-between">
+        <div>
+          <h3 class="mini-title">❓ "Por que o app não detecta minha fonte sozinho?"</h3>
+          <p style="font-size:8.6pt;color:var(--ink-soft);margin-bottom:7px">
+            Porque 99% das fontes de computador só têm <strong>cabos de energia</strong> ligados às peças — elas não
+            possuem cabo USB de comunicação com o Windows. Por isso nenhum software do mundo consegue "ler" o modelo da fonte.
+          </p>
+          <p style="font-size:8.6pt;color:var(--ink-soft)">
+            <strong>Como descobrir a sua?</strong> Olhe a nota fiscal, a caixa, o anúncio onde comprou ou a etiqueta lateral
+            da fonte. <em>Não sabe? Deixe <strong>85%</strong> (ou 80% se for fonte de entrada) — a diferença na conta é mínima!</em>
+          </p>
+        </div>
+        <div style="background:var(--cyan-bg);border:1px solid #BAE6FD;border-radius:7px;padding:5px 8px;font-size:8.2pt;color:#075985">
+          💡 No VoltPulse há botões prontos de 1 clique: <strong>80% • 85% • 90% • 92%</strong>.
+        </div>
+      </div>
+    </div>
+
+    <!-- PARTE B: CONSUMO BASE EXTRA -->
+    <h2 class="sub-title" style="margin-top:8px">🧩 2. Como calcular o "Consumo base extra (W)"</h2>
+    <p style="font-size:8.9pt;color:var(--ink-soft);margin-bottom:6px">
+      O processador (CPU) e a placa de vídeo (GPU) informam seus Watts diretamente ao VoltPulse. Porém,
+      <strong>placa-mãe, memória RAM, SSD, ventoinhas, LEDs RGB, teclado/mouse e monitor</strong> não possuem sensor
+      de Watts. O campo <em>Consumo base extra</em> serve justamente para somar essas peças!
+    </p>
+
+    <div class="grid-2">
+      <div>
+        <table class="tbl" style="margin:0">
+          <thead>
+            <tr>
+              <th>Componente do seu Setup</th>
+              <th class="num">Consumo Médio</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Placa-mãe + Chipset + 2 pentes RAM</td><td class="num"><strong>15 – 20 W</strong></td></tr>
+            <tr><td>Cada SSD (NVMe ou SATA)</td><td class="num"><strong>3 – 5 W</strong></td></tr>
+            <tr><td>Cada HD Mecânico tradicional</td><td class="num"><strong>6 – 8 W</strong></td></tr>
+            <tr><td>Ventoinhas (fans) + RGB (cada)</td><td class="num"><strong>2 – 3 W</strong></td></tr>
+            <tr><td>Water Cooler (bomba + fans)</td><td class="num"><strong>10 – 15 W</strong></td></tr>
+            <tr><td>Teclado + Mouse + Headset USB</td><td class="num"><strong>4 – 6 W</strong></td></tr>
+            <tr><td>Monitor 24"–27" LED/IPS (se quiser somar)</td><td class="num"><strong>25 – 35 W</strong></td></tr>
+            <tr><td>Monitor Ultrawide / 32" / OLED</td><td class="num"><strong>45 – 60 W</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="card green">
+          <h3 class="mini-title">⚡ Os 3 Atalhos Prontos do VoltPulse</h3>
+          <ul class="clean" style="margin-top:3px">
+            <li><strong>Só Gabinete (30 W):</strong> PC padrão (placa-mãe, 2 pentes RAM, 1 SSD, 3–4 fans, mouse e teclado). <em>Não conta o monitor.</em></li>
+            <li><strong>+1 Monitor (60 W):</strong> gabinete completo + 1 monitor LED/IPS comum (~30 W).</li>
+            <li><strong>+2 Monitores (90 W):</strong> gabinete completo + 2 monitores ligados na mesma régua.</li>
+          </ul>
+        </div>
+        <div class="card amber">
+          <h3 class="mini-title">💻 Uso Notebook! O que coloco?</h3>
+          <p style="font-size:8.4pt;color:#78350F">
+            Notebooks gastam muito menos nas peças auxiliares e o carregador tem alta eficiência. Use
+            <strong>Eficiência: 88%</strong> e <strong>Consumo Base Extra: 10 W a 15 W</strong> (tela + SSD + placa).
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="formula-hero" style="margin-top:10px;padding:10px 14px">
+      <div class="f-label">Como o VoltPulse calcula os Watts na Tomada em Tempo Real</div>
+      <div class="f-eq" style="font-size:11.5pt">
+        Tomada (W) = ( <span class="cy">CPU</span> + <span class="cy">GPU</span> + <span class="cy">Consumo Base</span> ) ÷ ( <span class="hi">Eficiência PSU ÷ 100</span> )
+      </div>
+      <div class="f-sub">
+        <strong>Exemplo real:</strong> CPU 32 W + GPU 57 W + Base 30 W = 119 W internos → 119 ÷ 0,85 = <strong>140 W na tomada!</strong>
+      </div>
+    </div>
+
+    <div class="running-footer">
+      <span>VoltPulse v4.2 • Guia Didático para Iniciantes</span>
+      <span class="page-num">Página 4 de 8</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<!-- PÁGINA 5: TOUR PELO DASHBOARD + ENERGIA & CUSTOS                        -->
+<!-- ======================================================================= -->
+<section class="page">
+  <div class="page-inner">
+    <div class="running-header">
+      <div class="brand-mini">⚡ VoltPulse — Guia Didático para Iniciantes</div>
+      <div>Capítulo 05 • Dashboard e Energia &amp; Custos</div>
+    </div>
+
+    <div class="chapter-tag">Capítulo 05 • Entendendo as Telas</div>
+    <h1 class="sec-title">Dashboard Principal + Aba Energia &amp; Custos</h1>
+    <p class="lead">
+      Ao abrir o VoltPulse, o <strong>Dashboard</strong> já entrega um raio-X completo do seu PC num piscar de olhos.
+      Veja o que significa cada bloco na tela:
+    </p>
+
+    <div class="shot-frame">
+      <img src="file:///C:/Users/Root/.gemini/antigravity/scratch/PcPowerMonitor/assets/screenshots/dashboard.jpg" alt="Dashboard do VoltPulse" />
+      <div class="shot-caption">
+        <span><strong>Dashboard:</strong> KPIs em Reais no topo, 4 medidores circulares, gráficos ao vivo e histórico de 7 dias</span>
+        <span>Menu lateral à esquerda</span>
+      </div>
+    </div>
+
+    <div class="grid-4" style="margin: 8px 0;">
+      <div class="card cyan" style="padding:8px 9px">
+        <h3 class="mini-title" style="font-size:8.6pt;color:#0369A1">1. Agora (Tomada)</h3>
+        <p style="font-size:7.9pt;color:var(--ink-soft)">Watts totais puxados da parede agora, detalhando CPU, GPU e Base.</p>
+      </div>
+      <div class="card green" style="padding:8px 9px">
+        <h3 class="mini-title" style="font-size:8.6pt;color:#047857">2. Consumo Hoje</h3>
+        <p style="font-size:7.9pt;color:var(--ink-soft)">Quanto já gastou hoje em R$, horas ligado, kWh, média e pico de Watts.</p>
+      </div>
+      <div class="card purple" style="padding:8px 9px">
+        <h3 class="mini-title" style="font-size:8.6pt;color:#6D28D9">3. Semana (7 dias)</h3>
+        <p style="font-size:7.9pt;color:var(--ink-soft)">Soma dos últimos 7 dias e média diária em kWh.</p>
+      </div>
+      <div class="card amber" style="padding:8px 9px">
+        <h3 class="mini-title" style="font-size:8.6pt;color:#B45309">4. Mês Atual</h3>
+        <p style="font-size:7.9pt;color:var(--ink-soft)">Gasto acumulado no mês + projeção automática para fechar os 30 dias!</p>
+      </div>
+    </div>
+
+    <p style="font-size:8.6pt;color:var(--ink-soft);margin-bottom:8px">
+      <strong>Dica interativa:</strong> passe o mouse sobre qualquer ponto dos gráficos de <strong>Potência</strong>,
+      <strong>Temperaturas</strong> ou <strong>Últimos 7 Dias</strong> para ver os números exatos. No rodapé do menu
+      esquerdo há botões rápidos para <strong>Pausar</strong>, abrir o <strong>Overlay Flutuante</strong>, trocar
+      idioma (<strong>PT/EN</strong>) e alternar o tema. Em <strong>notebooks</strong>, aparece automaticamente um
+      card extra com <strong>Saúde e Desgaste da Bateria</strong>!
+    </p>
+
+    <h2 class="sub-title" style="margin-top:4px">⚡ Aba "Energia &amp; Custos" — Ferramentas para Controlar seu Bolso</h2>
+    <div class="grid-2">
+      <div class="card white">
+        <h3 class="mini-title">🎮 Medidor de Sessão / Jogo</h3>
+        <p style="font-size:8.5pt;color:var(--ink-soft);margin-bottom:5px">
+          Quer saber exatamente quanto custou <strong>2 horas jogando GTA</strong>, editando vídeo ou fazendo uma live?
+          Digite um nome (ex: <em>"Jogando"</em>) e clique em <strong>▶ Iniciar Sessão</strong>.
+        </p>
+        <p style="font-size:8.3pt;color:var(--green)">
+          <strong>Bônus:</strong> com o <em>Modo Jogo Automático</em> ligado, ele começa e termina a contagem sozinho quando você abre e fecha um jogo!
+        </p>
+      </div>
+
+      <div class="card white">
+        <h3 class="mini-title">🧮 Simulador de Conta de Luz</h3>
+        <p style="font-size:8.5pt;color:var(--ink-soft);margin-bottom:5px">
+          Use os controles deslizantes de <strong>Horas por dia (1h a 24h)</strong> e <strong>Potência (W)</strong> para
+          simular cenários: <em>"E se eu deixar o PC ligado 10h por dia trabalhando?"</em> ou <em>"4h por dia jogando?"</em>.
+        </p>
+        <p style="font-size:8.3pt;color:var(--cyan)">
+          Clique em <strong>"Usar atual"</strong> ou <strong>"Usar média de hoje"</strong> para simular com dados reais do seu PC.
+        </p>
+      </div>
+
+      <div class="card white">
+        <h3 class="mini-title">🕒 Consumo por Hora (00h–23h)</h3>
+        <p style="font-size:8.5pt;color:var(--ink-soft)">
+          Gráfico de barras mostrando em quais horários do dia seu computador puxou mais energia — ótimo para identificar
+          picos de consumo à tarde ou de madrugada.
+        </p>
+      </div>
+
+      <div class="card white">
+        <h3 class="mini-title">📊 Histórico de 14 Dias &amp; Exportar CSV</h3>
+        <p style="font-size:8.5pt;color:var(--ink-soft)">
+          Todo dia monitorado fica salvo automaticamente no seu PC. Você pode clicar em <strong>Exportar CSV</strong>
+          para abrir sua planilha de gastos direto no Excel ou Google Planilhas.
+        </p>
+      </div>
+    </div>
+
+    <div class="running-footer">
+      <span>VoltPulse v4.2 • Guia Didático para Iniciantes</span>
+      <span class="page-num">Página 5 de 8</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<!-- PÁGINA 6: ECO & UNDERVOLT SEGURO                                        -->
+<!-- ======================================================================= -->
+<section class="page">
+  <div class="page-inner">
+    <div class="running-header">
+      <div class="brand-mini">⚡ VoltPulse — Guia Didático para Iniciantes</div>
+      <div>Capítulo 06 • Eco &amp; Undervolt Seguro (Economia Real)</div>
+    </div>
+
+    <div class="chapter-tag green">Capítulo 06 • Recurso Estrela da v4.2</div>
+    <h1 class="sec-title">Eco &amp; Undervolt Seguro: menos calor e conta mais barata</h1>
+    <p class="lead">
+      No dia a dia (YouTube, navegador, estudos, trabalho), seu processador e placa de vídeo frequentemente aplicam
+      voltagens altas sem necessidade. O <strong>Eco Engine Pro</strong> do VoltPulse reduz esse desperdício
+      com <strong>100% de segurança</strong>, sem mexer na BIOS e sem risco de Tela Azul (BSOD).
+    </p>
+
+    <div class="shot-frame">
+      <img src="file:///C:/Users/Root/.gemini/antigravity/scratch/PcPowerMonitor/assets/screenshots/eco-undervolt.jpg" alt="Aba Eco e Undervolt Seguro do VoltPulse" />
+      <div class="shot-caption">
+        <span><strong>Eco &amp; Undervolt:</strong> 3 perfis prontos de 1 clique, automações inteligentes, ajuste fino e botão de restaurar</span>
+        <span>100% reversível</span>
+      </div>
+    </div>
+
+    <div class="grid-3" style="margin: 8px 0;">
+      <div class="card white">
+        <h3 class="mini-title">⚖️ Padrão (Stock)</h3>
+        <p style="font-size:8.2pt;color:var(--ink-soft);margin-bottom:4px">
+          Força total de fábrica (CPU 100%, EPP 0, GPU 100%). Use para jogos pesados, edição 4K e benchmarks.
+        </p>
+        <span class="chip">Máximo Desempenho</span>
+      </div>
+      <div class="card green">
+        <h3 class="mini-title" style="color:#065F46">🌿 Eco Inteligente</h3>
+        <p style="font-size:8.2pt;color:#064E3B;margin-bottom:4px">
+          CPU 99% + Speed Shift EPP 65 + Boost Eficiente + GPU -15%. Reduz <strong>25% a 35% do consumo</strong> e até <strong>15 °C</strong> mantendo fluidez total!
+        </p>
+        <span class="chip green">Recomendado</span>
+      </div>
+      <div class="card purple">
+        <h3 class="mini-title" style="color:#5B21B6">🤫 Ultra Silencioso</h3>
+        <p style="font-size:8.2pt;color:#4C1D95;margin-bottom:4px">
+          CPU 85% + EPP 90 + Boost Off + PCIe ASPM + GPU -25%. Ventoinhas quase mudas para estudos, downloads ou noite.
+        </p>
+        <span class="chip purple">Consumo Mínimo</span>
+      </div>
+    </div>
+
+    <h2 class="sub-title" style="margin-top:6px">🤖 As 3 Automações Inteligentes (Configure e Esqueça!)</h2>
+    <div class="steps" style="gap:6px;margin:5px 0">
+      <div class="step-row" style="padding:7px 10px">
+        <div class="step-num" style="background:#0284C7">🎮</div>
+        <div class="step-body">
+          <strong>Eco fora de Jogos (A melhor função!):</strong> mantém seu PC economizando luz no perfil
+          <em>Eco</em> enquanto você navega ou trabalha, e <strong>troca automaticamente para Stock (100%)</strong>
+          no instante em que você abre um jogo — voltando ao Eco quando você fecha o game!
+        </div>
+      </div>
+      <div class="step-row" style="padding:7px 10px">
+        <div class="step-num" style="background:#7C3AED">💤</div>
+        <div class="step-body">
+          <strong>Modo Idle (AFK):</strong> saiu da cadeira por 10 minutos (configurável)? O PC entra sozinho em
+          <em>Ultra Silencioso</em> para não gastar energia à toa. Mexeu no mouse ou teclado, volta na hora!
+        </div>
+      </div>
+      <div class="step-row" style="padding:7px 10px">
+        <div class="step-num" style="background:#D97706">🔥</div>
+        <div class="step-body">
+          <strong>Proteção Térmica (Thermal Guard):</strong> se a CPU ou GPU passar da temperatura limite (padrão 85 °C)
+          por 15 segundos, o app ativa o <em>Eco</em> automaticamente para proteger suas peças e devolve ao normal assim que esfriar.
+        </div>
+      </div>
+    </div>
+
+    <div class="callout green" style="margin-top:7px">
+      <strong>🛡️ Por que isso NÃO estraga o PC nem dá Tela Azul?</strong><br />
+      O VoltPulse <strong>nunca</strong> faz overclock nem altera registradores perigosos (MSR/VRM). Na CPU ele usa apenas
+      controles certificados do próprio Windows (<em>PowerCfg / Speed Shift EPP</em>). Na GPU dedicada, usa apenas o limite oficial
+      de energia (<em>Power Limit</em>) via driver da <strong>AMD Radeon (ADL)</strong> ou <strong>NVIDIA</strong> dentro da faixa
+      segura de fábrica. GPUs integradas são ignoradas automaticamente e o botão vermelho <strong>"Restaurar Padrão de Fábrica"</strong>
+      desfaz tudo em 1 segundo! No topo da tela você vê ainda a <strong>Economia Estimada em R$/mês</strong> ao vivo.
+    </div>
+
+    <div class="running-footer">
+      <span>VoltPulse v4.2 • Guia Didático para Iniciantes</span>
+      <span class="page-num">Página 6 de 8</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<!-- PÁGINA 7: TEMPERATURAS, VOLTAGENS, DISCOS SSD E SISTEMA/REDE            -->
+<!-- ======================================================================= -->
+<section class="page">
+  <div class="page-inner">
+    <div class="running-header">
+      <div class="brand-mini">⚡ VoltPulse — Guia Didático para Iniciantes</div>
+      <div>Capítulo 07 • Temperaturas, Voltagens, SSD e Sistema</div>
+    </div>
+
+    <div class="chapter-tag purple">Capítulo 07 • Raio-X Completo do Hardware</div>
+    <h1 class="sec-title">Temperaturas, Voltagens, Saúde do SSD e Sistema</h1>
+    <p class="lead">
+      Além de energia, o VoltPulse substitui vários programas pesados de monitoramento (HWMonitor, CrystalDiskInfo, etc.)
+      reunindo tudo em abas fáceis de entender.
+    </p>
+
+    <div class="grid-2" style="margin-bottom:8px">
+      <div class="shot-frame" style="margin:0">
+        <img src="file:///C:/Users/Root/.gemini/antigravity/scratch/PcPowerMonitor/assets/screenshots/thermals.png" alt="Aba Temperaturas" />
+        <div class="shot-caption"><span><strong>Temperaturas:</strong> CPU, GPU e SSD com status colorido</span></div>
+      </div>
+      <div class="shot-frame" style="margin:0">
+        <img src="file:///C:/Users/Root/.gemini/antigravity/scratch/PcPowerMonitor/assets/screenshots/ssd-health.png" alt="Aba Discos e SSD" />
+        <div class="shot-caption"><span><strong>Discos &amp; SSD:</strong> Vida útil (%), TBW, horas e S.M.A.R.T.</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:8px">
+      <div class="card white">
+        <h3 class="mini-title">🌡️ Aba Temperaturas — O que é normal?</h3>
+        <table class="tbl" style="margin:4px 0 0 0;font-size:8.1pt">
+          <thead><tr><th>Componente</th><th>Uso Leve</th><th>Jogando</th><th>Atenção</th></tr></thead>
+          <tbody>
+            <tr><td><strong>CPU</strong></td><td>35–55 °C</td><td>60–80 °C</td><td><span class="chip rose">&gt; 85 °C</span></td></tr>
+            <tr><td><strong>GPU</strong></td><td>35–50 °C</td><td>60–82 °C</td><td><span class="chip rose">&gt; 85 °C</span></td></tr>
+            <tr><td><strong>SSD NVMe</strong></td><td>35–50 °C</td><td>50–65 °C</td><td><span class="chip amber">&gt; 70 °C</span></td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:7.9pt;color:var(--ink-muted);margin-top:5px">
+          Se a CPU ou GPU passar frequentemente de 85 °C, verifique poeira nas ventoinhas, pasta térmica ou ative o <strong>Thermal Guard</strong>.
+        </p>
+      </div>
+
+      <div class="card white">
+        <h3 class="mini-title">💾 Aba Discos &amp; SSD (S.M.A.R.T.)</h3>
+        <ul class="clean" style="margin-top:3px">
+          <li><strong>Vida Útil (%):</strong> 100% = novo. Acima de 50% está ótimo! Abaixo de 20%, comece a planejar backup dos arquivos importantes.</li>
+          <li><strong>Total Gravado (TBW):</strong> quantos Terabytes já foram gravados no SSD desde que saiu da fábrica.</li>
+          <li><strong>Tempo Ligado &amp; Ligações:</strong> total de horas de uso real do disco (ótimo para conferir ao comprar PC/SSD usado!).</li>
+          <li><strong>Atributos S.M.A.R.T.:</strong> clique para expandir os dados técnicos detalhados se precisar.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card cyan">
+        <h3 class="mini-title" style="color:#0369A1">⚡ Aba Voltagens (V) — Dúvida Frequente!</h3>
+        <p style="font-size:8.4pt;color:#0C4A6E;margin-bottom:5px">
+          Mostra a tensão do processador (<strong>CPU VCore / VID</strong>, normalmente ~0,7 V a 1,35 V), da placa de vídeo
+          (<strong>GPU Core Voltage</strong>) e, quando suportado pela placa-mãe, as trilhas da fonte (<strong>+12V, +5V, +3.3V</strong>).
+        </p>
+        <p style="font-size:8.2pt;color:#075985">
+          <strong>❓ Por que +12V ou +5V podem não aparecer no meu PC?</strong><br />
+          Algumas placas-mãe de entrada ou notebooks não expõem o chip sensor <em>SuperIO</em> para o Windows.
+          O VoltPulse detecta isso automaticamente e adapta os cards para mostrar apenas os sensores reais existentes no seu hardware!
+        </p>
+      </div>
+
+      <div class="card white">
+        <h3 class="mini-title">🌐 Aba Sistema &amp; Rede</h3>
+        <ul class="clean" style="margin-top:3px">
+          <li><strong>Especificações completas:</strong> modelo da CPU, GPU, placa-mãe, RAM e sistema operacional.</li>
+          <li><strong>Tráfego de Rede ao Vivo:</strong> velocidade atual de Download e Upload + total baixado na sessão.</li>
+          <li><strong>🔍 Top Processos:</strong> mostra exatamente <em>qual programa aberto está puxando mais CPU e energia agora</em>.</li>
+          <li><strong>Ventoinhas (RPM) &amp; Clocks (MHz):</strong> rotação das fans e frequências reais de cada núcleo.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="running-footer">
+      <span>VoltPulse v4.2 • Guia Didático para Iniciantes</span>
+      <span class="page-num">Página 7 de 8</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<!-- PÁGINA 8: CONFIGURAÇÕES, EXTRAS + CHECKLIST RÁPIDO PARA O VÍDEO         -->
+<!-- ======================================================================= -->
+<section class="page">
+  <div class="page-inner">
+    <div class="running-header">
+      <div class="brand-mini">⚡ VoltPulse — Guia Didático para Iniciantes</div>
+      <div>Capítulo 08 • Configurações, Recursos Extras e Checklist</div>
+    </div>
+
+    <div class="chapter-tag amber">Capítulo 08 • Personalização &amp; Checklist</div>
+    <h1 class="sec-title">Recursos Extras e Checklist "Configure em 2 Minutos"</h1>
+    <p class="lead">
+      Na aba <strong>Configurações</strong> você deixa o VoltPulse com a sua cara e automatiza alertas para nunca mais
+      ter surpresas na conta de luz ou no aquecimento do computador.
+    </p>
+
+    <div class="grid-3" style="margin-bottom:9px">
+      <div class="card white">
+        <h3 class="mini-title">🎨 6 Temas &amp; Idiomas</h3>
+        <p style="font-size:8.2pt;color:var(--ink-soft)">
+          Escolha entre <strong>Dark Slate</strong>, <strong>OLED Midnight</strong>, <strong>Cyber Neon</strong>,
+          <strong>Emerald</strong>, <strong>Sunset Carbon</strong> e <strong>Clean Light</strong>, além de Português ou Inglês.
+        </p>
+      </div>
+      <div class="card white">
+        <h3 class="mini-title">📌 Mini Widget (Overlay)</h3>
+        <p style="font-size:8.2pt;color:var(--ink-soft)">
+          Pílula flutuante super discreta (Watts, CPU, GPU e RAM) que fica no canto da tela — e pode abrir
+          <strong>sozinha quando você inicia um jogo</strong>!
+        </p>
+      </div>
+      <div class="card white">
+        <h3 class="mini-title">🔔 Alertas &amp; Meta Mensal</h3>
+        <p style="font-size:8.2pt;color:var(--ink-soft)">
+          Defina um limite mensal em Reais (ex: R$ 60). O Windows avisa se o PC ultrapassar sua meta ou se alguma peça atingir temperatura crítica.
+        </p>
+      </div>
+      <div class="card white">
+        <h3 class="mini-title">🌡️ Ícone na Bandeja (Tray)</h3>
+        <p style="font-size:8.2pt;color:var(--ink-soft)">
+          Troque o ícone ao lado do relógio do Windows para mostrar ao vivo a <strong>Temperatura da CPU (°C)</strong>
+          ou os <strong>Watts atuais (W)</strong> sem precisar abrir o app!
+        </p>
+      </div>
+      <div class="card white">
+        <h3 class="mini-title">🚀 Iniciar c/ Windows</h3>
+        <p style="font-size:8.2pt;color:var(--ink-soft)">
+          Inicia automaticamente junto com o PC <strong>sem pop-up chato de permissão (UAC)</strong> e fica quietinho na
+          bandeja em <em>Modo Ultra-Leve</em>.
+        </p>
+      </div>
+      <div class="card white">
+        <h3 class="mini-title">🔌 API JSON Local</h3>
+        <p style="font-size:8.2pt;color:var(--ink-soft)">
+          Para usuários avançados: ativa um endpoint local (<span class="mono">:48731/api/telemetry</span>) para integrar
+          com <strong>Home Assistant</strong> ou <strong>Stream Deck</strong>.
+        </p>
+      </div>
+    </div>
+
+    <!-- CHECKLIST PRÁTICO -->
+    <div class="card green" style="padding:12px 14px;margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <h2 style="font-size:11.5pt;font-weight:800;color:#065F46">✅ Checklist Rápido: Configure o VoltPulse em 2 Minutos</h2>
+        <span class="chip green">Acompanhe no vídeo!</span>
+      </div>
+      <div class="check-list">
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div><strong>1. Instale com o driver PawnIO marcado</strong> e verifique o selo verde <em>● Modo Admin</em> no topo.</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div><strong>2. Vá em Configurações → Tarifa de energia:</strong> divida o valor total da sua conta (sem iluminação pública) pelos kWh consumidos e digite o resultado (ex: <span class="mono">0,94</span>).</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div><strong>3. Ajuste Eficiência da Fonte (%) e Base Extra (W):</strong> clique no selo da sua fonte (ex: <em>85% Bronze</em>) e no atalho do seu setup (<em>30W só gabinete</em> ou <em>60W com monitor</em>).</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div><strong>4. Clique em "Salvar Configurações"</strong> (e aproveite para marcar <em>Iniciar com Windows</em> e <em>Modo Ultra-Leve na bandeja</em>).</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div><strong>5. Vá em Eco &amp; Undervolt:</strong> ative <em>Eco fora de Jogos</em>, <em>Modo Idle (AFK)</em> e <em>Thermal Guard</em> para economizar luz automaticamente sem perder FPS nos jogos!</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div><strong>6. Confira seu SSD e Temperaturas:</strong> dê uma olhada rápida na aba <em>Discos &amp; SSD</em> para ver a saúde (%) e na aba <em>Temperaturas</em> para garantir que está tudo geladinho.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MINI FAQ -->
+    <div class="card dark" style="padding:11px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong style="color:#38BDF8;font-size:9.5pt">❓ Perguntas Rápidas (FAQ)</strong>
+        <span style="font-size:8pt;color:#94A3B8">Projeto 100% Gratuito &amp; Open-Source (MIT)</span>
+      </div>
+      <div class="grid-2" style="gap:10px;font-size:8.2pt;color:#CBD5E1">
+        <div>
+          <p style="margin-bottom:4px"><strong style="color:#FFFFFF">• Os dados vão para a internet?</strong><br />Não! Tudo fica salvo 100% no seu PC (privacidade total). Ele só consulta o GitHub se você ativar aviso de atualização.</p>
+          <p><strong style="color:#FFFFFF">• A estimativa em Reais é confiável?</strong><br />Sim! Bem calibrada (tarifa real + eficiência + base), a margem de acerto costuma ficar entre 90% e 95% frente a um medidor de tomada.</p>
+        </div>
+        <div>
+          <p style="margin-bottom:4px"><strong style="color:#FFFFFF">• Preciso deixar a janela aberta?</strong><br />Não! Clique no <strong>X</strong> para minimizar na bandeja. Ele continua medindo o consumo do dia gastando quase zero recurso.</p>
+          <p><strong style="color:#FFFFFF">• Onde baixar atualizações grátis?</strong><br />Sempre na página oficial: <span style="color:#34D399;font-family:Consolas,monospace">github.com/luanwsantos97/VoltPulse</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="running-footer">
+      <span>VoltPulse v4.2 • Guia Didático para Iniciantes</span>
+      <span class="page-num">Página 8 de 8</span>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
