@@ -36,17 +36,44 @@ namespace PcPowerMonitor
 
         private static readonly HashSet<string> KnownGameExecutables = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "cs2", "csgo", "valorant-win64-shipping", "league of legends", "fortniteclient-win64-shipping",
-            "gta5", "gtav", "fivem_gtaprocess", "rdr2", "cyberpunk2077", "eldenring", "dota2",
-            "tslgame", "r5apex", "overwatch", "rocketleague", "robloxplayerbeta", "genshinimpact",
+            "cs2", "csgo", "valorant-win64-shipping", "valorant", "league of legends", "fortniteclient-win64-shipping",
+            "gta5", "gta5_enhanced", "gtav", "fivem_gtaprocess", "rdr2", "cyberpunk2077", "eldenring", "dota2",
+            "tslgame", "r5apex", "r5apex_dx12", "overwatch", "rocketleague", "robloxplayerbeta", "genshinimpact",
             "starrail", "zenlesszonezero", "cod", "mw2", "blackops6", "helldivers2", "palworld-win64-shipping",
             "bg3", "bg3_dx11", "witcher3", "hogwartslegacy", "starfield", "fallout4", "skyrimse",
-            "fc24", "fc25", "ea sports fc 25", "nba2k24", "nba2k25", "forzahorizon5", "fh5",
-            "rainbowsix", "rainbowsix_vulkan", "destiny2", "warframe.x64", "pathofexile", "pathofexile_x64",
+            "fc24", "fc25", "ea sports fc 25", "fifa23", "nba2k24", "nba2k25", "forzahorizon5", "forzahorizon4", "fh5",
+            "rainbowsix", "rainbowsix_vulkan", "destiny2", "warframe.x64", "pathofexile", "pathofexile_x64", "pathofexile2", "pathofexile2_x64",
             "diablo iv", "wow", "wowclassic", "ffxiv_dx11", "escapefromtarkov", "rustclient",
             "dayz_x64", "arkascended", "shootergame", "terraria", "stardew valley", "hollow_knight",
             "hades", "hades2", "deadbydaylight-win64-shipping", "phasmophobia", "lethal company",
-            "among us", "fallguys_client_game", "bf2042", "bfv", "bf1", "tarkov", "pubg"
+            "among us", "fallguys_client_game", "bf2042", "bfv", "bf1", "bf4", "bf3", "tarkov", "pubg",
+            "minecraft.windows", "eurotrucks2", "amtrucks", "acs", "ac2-win64-shipping", "f1_24", "f1_23",
+            "b1-win64-shipping", "stalker2-win64-shipping", "marvel-win64-shipping", "deltaforceclient-win64-shipping",
+            "godofwar", "gowr", "ghostoftsushima", "re4", "valheim", "factorio", "satisfactory"
+        };
+
+        private static readonly Dictionary<string, string> FriendlyGameNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "bf1", "Battlefield 1" },
+            { "bfv", "Battlefield V" },
+            { "bf4", "Battlefield 4" },
+            { "bf3", "Battlefield 3" },
+            { "bf2042", "Battlefield 2042" },
+            { "cs2", "Counter-Strike 2" },
+            { "valorant-win64-shipping", "VALORANT" },
+            { "fortniteclient-win64-shipping", "Fortnite" },
+            { "gta5", "GTA V" },
+            { "gta5_enhanced", "GTA V Enhanced" },
+            { "rdr2", "Red Dead Redemption 2" },
+            { "cyberpunk2077", "Cyberpunk 2077" },
+            { "eldenring", "Elden Ring" },
+            { "r5apex", "Apex Legends" },
+            { "r5apex_dx12", "Apex Legends" },
+            { "tslgame", "PUBG" },
+            { "fc25", "EA SPORTS FC 25" },
+            { "fc24", "EA SPORTS FC 24" },
+            { "league of legends", "League of Legends" },
+            { "dota2", "Dota 2" }
         };
 
         // DLLs altamente especificas de engines e SDKs de jogos (ausentes em Lightshot, navegadores, IDEs, Office, etc.)
@@ -256,12 +283,26 @@ namespace PcPowerMonitor
                         if (p.Id <= 4) continue;
                         string name = p.ProcessName;
                         if (string.IsNullOrWhiteSpace(name) || IgnoredProcesses.Contains(name)) continue;
+
+                        // Jogos protegidos por Anti-Cheat (ex: EA AntiCheat em BF1/FC25, Vanguard) bloqueiam MainWindowHandle/OpenProcess.
+                        // Se o executavel esta na whitelist confirmada de jogos, detecta imediatamente!
+                        if (KnownGameExecutables.Contains(name))
+                        {
+                            string wTitle = "";
+                            try { wTitle = p.MainWindowTitle; } catch { }
+                            string kPath = TryGetProcessPath(p.Id);
+                            procName = name;
+                            title = CleanGameTitle(wTitle, kPath, name);
+                            foundPid = p.Id;
+                            break;
+                        }
+
                         if (p.MainWindowHandle == IntPtr.Zero) continue;
 
                         string path = TryGetProcessPath(p.Id);
                         if (IsSystemOrUtilityPath(path)) continue;
 
-                        if (KnownGameExecutables.Contains(name) || IsInGameLibrary(path))
+                        if (IsInGameLibrary(path))
                         {
                             procName = name;
                             title = CleanGameTitle(p.MainWindowTitle, path, name);
@@ -362,6 +403,9 @@ namespace PcPowerMonitor
         {
             if (!string.IsNullOrWhiteSpace(windowTitle) && windowTitle.Length <= 48)
                 return windowTitle.Trim();
+            string friendly;
+            if (!string.IsNullOrWhiteSpace(fallbackName) && FriendlyGameNames.TryGetValue(fallbackName, out friendly))
+                return friendly;
             if (!string.IsNullOrWhiteSpace(exePath))
             {
                 string lower = exePath.ToLowerInvariant();

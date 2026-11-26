@@ -19,10 +19,15 @@ namespace PcPowerMonitor
         private static readonly Guid DxgiProviderGuid = new Guid("CA11C036-0102-4A2D-A6AD-F03CFED5D3C9");
         // Microsoft-Windows-D3D9 (jogos DX9 classicos)
         private static readonly Guid D3d9ProviderGuid = new Guid("783ACA0A-790E-4D7F-8451-AA850511C6B9");
+        // Microsoft-Windows-DxgKrnl (Kernel grafico universal: DX11/DX12/Vulkan/OpenGL/MPO — usado como fallback sem dupla contagem)
+        private static readonly Guid DxgKrnlProviderGuid = new Guid("802EC45A-1E99-4B83-9920-87C98277BA9D");
 
         private const int DxgiPresentStart = 42;
         private const int DxgiPresentMpoStart = 55;
+        private const int DxgiPresent1Start = 64;
         private const int D3d9PresentStart = 1;
+        private const int DxgKrnlPresentStart = 184;
+        private const ulong DxgKrnlBaseKeyword = 0x0000000000000040UL;
 
         private const uint EVENT_TRACE_REAL_TIME_MODE = 0x00000100;
         private const uint PROCESS_TRACE_MODE_REAL_TIME = 0x00000100;
@@ -184,12 +189,17 @@ namespace PcPowerMonitor
         [DllImport("advapi32.dll")]
         private static extern uint CloseTrace(ulong traceHandle);
 
-        // Estado da sessao e ring buffer fixo (zero alocacao no hot path)
+        // Estado da sessao e ring buffers fixos separados (DXGI/D3D9 primario + DxgKrnl fallback sem dupla contagem)
         private readonly object _sync = new object();
         private readonly long[] _frameTicks = new long[1024];
         private int _frameHead;
         private int _frameCount;
         private long _lastFrameTick;
+
+        private readonly long[] _dxgkTicks = new long[1024];
+        private int _dxgkHead;
+        private int _dxgkCount;
+        private long _lastDxgkTick;
 
         private volatile int _targetPid;
         private volatile bool _running;
@@ -268,10 +278,13 @@ namespace PcPowerMonitor
                     _sessionHandle = sessHandle;
 
                     Guid dxgi = DxgiProviderGuid;
-                    EnableTraceEx2(_sessionHandle, ref dxgi, EVENT_CONTROL_CODE_ENABLE_PROVIDER, 4, ulong.MaxValue, 0, 0, IntPtr.Zero);
+                    EnableTraceEx2(_sessionHandle, ref dxgi, EVENT_CONTROL_CODE_ENABLE_PROVIDER, 5, ulong.MaxValue, 0, 0, IntPtr.Zero);
 
                     Guid d3d9 = D3d9ProviderGuid;
-                    EnableTraceEx2(_sessionHandle, ref d3d9, EVENT_CONTROL_CODE_ENABLE_PROVIDER, 4, ulong.MaxValue, 0, 0, IntPtr.Zero);
+                    EnableTraceEx2(_sessionHandle, ref d3d9, EVENT_CONTROL_CODE_ENABLE_PROVIDER, 5, ulong.MaxValue, 0, 0, IntPtr.Zero);
+
+                    Guid dxgk = DxgKrnlProviderGuid;
+                    EnableTraceEx2(_sessionHandle, ref dxgk, EVENT_CONTROL_CODE_ENABLE_PROVIDER, 5, DxgKrnlBaseKeyword, 0, 0, IntPtr.Zero);
 
                     _callbackPin = OnEventRecord;
                     var logFile = new EVENT_TRACE_LOGFILEW
@@ -334,23 +347,32 @@ namespace PcPowerMonitor
             if (pid != _targetPid) return;
 
             ushort eventId = (ushort)Marshal.ReadInt16(recordPtr, OffsetEventId);
-            // Filtra apenas Present_Start (DXGI 42/55 ou D3D9 1)
-            if (eventId != DxgiPresentStart && eventId != DxgiPresentMpoStart && eventId != D3d9PresentStart)
-                return;
-
-            // Confirma o ProviderId pelos primeiros 4 bytes (0xCA11C036 para DXGI, 0x783ACA0A para D3D9) — zero alocacao!
             int provFirst = Marshal.ReadInt32(recordPtr, OffsetProviderId);
-            bool isDxgi = provFirst == unchecked((int)0xCA11C036) && (eventId == DxgiPresentStart || eventId == DxgiPresentMpoStart);
-            bool isD3d9 = provFirst == unchecked((int)0x783ACA0A) && eventId == D3d9PresentStart;
-            if (!isDxgi && !isD3d9) return;
+
+            bool isPrimary =
+                (provFirst == unchecked((int)0xCA11C036) && (eventId == DxgiPresentStart || eventId == DxgiPresentMpoStart || eventId == DxgiPresent1Start)) ||
+                (provFirst == unchecked((int)0x783ACA0A) && eventId == D3d9PresentStart);
+
+            bool isDxgk = !isPrimary && provFirst == unchecked((int)0x802EC45A) && eventId == DxgKrnlPresentStart;
+            if (!isPrimary && !isDxgk) return;
 
             long nowTick = Stopwatch.GetTimestamp();
             lock (_frameTicks)
             {
-                _frameTicks[_frameHead] = nowTick;
-                _frameHead = (_frameHead + 1) & 1023;
-                if (_frameCount < 1024) _frameCount++;
-                _lastFrameTick = nowTick;
+                if (isPrimary)
+                {
+                    _frameTicks[_frameHead] = nowTick;
+                    _frameHead = (_frameHead + 1) & 1023;
+                    if (_frameCount < 1024) _frameCount++;
+                    _lastFrameTick = nowTick;
+                }
+                else
+                {
+                    _dxgkTicks[_dxgkHead] = nowTick;
+                    _dxgkHead = (_dxgkHead + 1) & 1023;
+                    if (_dxgkCount < 1024) _dxgkCount++;
+                    _lastDxgkTick = nowTick;
+                }
             }
         }
 
@@ -360,31 +382,39 @@ namespace PcPowerMonitor
 
             long now = Stopwatch.GetTimestamp();
             long freq = Stopwatch.Frequency;
-            long windowTicks = freq; // 1.0 segundo
-            long staleTicks = freq * 2; // 2.0 segundos sem frames => nulo
-
-            int countInWindow = 0;
-            long oldestInWindow = now;
+            long windowTicks = freq;     // 1.0 segundo
+            long staleTicks = freq * 2;  // 2.0 segundos sem frames => nulo
 
             lock (_frameTicks)
             {
-                if (_frameCount == 0 || (now - _lastFrameTick) > staleTicks)
-                    return null;
+                // Prefere DXGI/D3D9; cai automaticamente para DxgKrnl (Vulkan/OpenGL/MPO) sem dupla contagem!
+                if (_frameCount > 0 && (now - _lastFrameTick) <= staleTicks)
+                    return ComputeFpsFromRing(_frameTicks, _frameHead, _frameCount, now, freq, windowTicks);
 
-                int total = _frameCount;
-                for (int i = 0; i < total; i++)
+                if (_dxgkCount > 0 && (now - _lastDxgkTick) <= staleTicks)
+                    return ComputeFpsFromRing(_dxgkTicks, _dxgkHead, _dxgkCount, now, freq, windowTicks);
+
+                return null;
+            }
+        }
+
+        private static int? ComputeFpsFromRing(long[] ring, int head, int count, long now, long freq, long windowTicks)
+        {
+            int countInWindow = 0;
+            long oldestInWindow = now;
+
+            for (int i = 0; i < count; i++)
+            {
+                int idx = (head - 1 - i) & 1023;
+                long ts = ring[idx];
+                if ((now - ts) <= windowTicks)
                 {
-                    int idx = (_frameHead - 1 - i) & 1023;
-                    long ts = _frameTicks[idx];
-                    if ((now - ts) <= windowTicks)
-                    {
-                        countInWindow++;
-                        oldestInWindow = ts;
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    countInWindow++;
+                    oldestInWindow = ts;
+                }
+                else
+                {
+                    break;
                 }
             }
 
@@ -392,7 +422,6 @@ namespace PcPowerMonitor
             double spanSec = (double)(now - oldestInWindow) / freq;
             if (countInWindow >= 2 && spanSec >= 0.25 && spanSec < 0.92)
             {
-                // Aquece rapido no primeiro segundo do jogo
                 int est = (int)Math.Round((countInWindow - 1) / spanSec);
                 return Math.Max(1, Math.Min(999, est));
             }
@@ -412,6 +441,9 @@ namespace PcPowerMonitor
             _frameHead = 0;
             _frameCount = 0;
             _lastFrameTick = 0;
+            _dxgkHead = 0;
+            _dxgkCount = 0;
+            _lastDxgkTick = 0;
         }
 
         public void Stop()

@@ -3,6 +3,13 @@
 All notable changes to **VoltPulse** are documented in this file.
 Versioning follows clean sequential releases (`v1.0.0`, `v1.0.1`, `v1.0.2`, ...).
 
+## [1.0.1] — 2026-11-26
+
+### Fixed & Improved
+- **Anti-Cheat Game Detection (`GameDetector`)**: detects protected games (EA AntiCheat such as *Battlefield 1 / V / 2042*, *EA FC 24/25*, *VALORANT*, etc.) even when `MainWindowHandle` is hidden by kernel anti-cheat, with expanded game catalog and friendly titles.
+- **Universal ETW FPS Counter (`FpsMonitor`)**: added automatic `Microsoft-Windows-DxgKrnl` (EventId `184`) fallback without double-counting alongside `DXGI` (level 5, EventIds `42/55/64`) and `D3D9` (level 5) for full DX9/DX11/DX12/Vulkan/OpenGL/Frostbite support.
+- **Verify Hub Flow**: automatically returns to the main **Verificar** circular screen with green applied status and score after applying optimizations (or when already 100% optimized), plus a dedicated `← Voltar para Verificar` button and sidebar click return.
+
 ## [1.0.0] — 2026-11-25 (Official Public Release)
 
 ### Highlights

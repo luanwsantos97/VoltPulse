@@ -1813,6 +1813,23 @@ input[type="range"] {
   color: #ffffff;
 }
 
+.scan-status-pill.ok {
+  border-color: rgba(52, 211, 153, 0.48);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.scan-status-pill.ok .scan-pill-ico {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: #042014;
+}
+
+.scan-orb.optimized {
+  box-shadow:
+    0 0 0 12px rgba(52, 211, 153, 0.06),
+    0 18px 46px rgba(16, 185, 129, 0.22),
+    inset 0 2px 18px rgba(52, 211, 153, 0.20);
+}
+
 .scan-orb-wrap {
   display: flex;
   flex-direction: column;
