@@ -604,12 +604,9 @@
 
     listEl.querySelectorAll("[data-apply-one]").forEach((btn) => {
       btn.addEventListener("click", () => {
+        state.lastOptimizedAt = new Date();
         sendHost({ action: "applySmartOptimize", items: [btn.dataset.applyOne] });
         showToast("✓ Otimização aplicada com segurança!");
-        // Se era a ultima otimizacao automatica, volta automaticamente para a tela Verificar com status aplicado!
-        if (autoRecs.length <= 1) {
-          returnToScanWithAppliedStatus(1);
-        }
       });
     });
     listEl.querySelectorAll("[data-rec-action]").forEach((btn) => {
@@ -652,27 +649,14 @@
         setTimeout(tick, 310);
       } else {
         state.scanning = false;
+        state.scanCompleted = true;
         if (orb) orb.classList.remove("scanning");
         if (lbl) lbl.textContent = "VERIFICAR";
         if (cap) cap.textContent = "Análise 100% segura • Energia, Eco, Temperaturas & SSD";
-
-        // Se o PC ja esta 100% otimizado (0 pendencias), volta direto para a tela Verificar com status verde aplicado!
-        const diag = state.payload ? buildScanDiagnostics(state.payload) : null;
-        if (diag && diag.recs.length === 0) {
-          state.lastOptimizedAt = new Date();
-          state.scanCompleted = false;
-          if ($("scanResultsStage")) $("scanResultsStage").classList.add("hidden");
-          if ($("scanHeroStage")) $("scanHeroStage").classList.remove("hidden");
-          if ($("mainTopbar")) $("mainTopbar").classList.add("hidden");
-          showToast(`✓ PC 100% otimizado e protegido! Nota ${diag.score}/100`);
-          if (state.payload) renderScanLive(state.payload);
-        } else {
-          state.scanCompleted = true;
-          if ($("scanHeroStage")) $("scanHeroStage").classList.add("hidden");
-          if ($("scanResultsStage")) $("scanResultsStage").classList.remove("hidden");
-          if ($("mainTopbar")) $("mainTopbar").classList.remove("hidden");
-          if (state.payload) renderScanResults(state.payload);
-        }
+        if ($("scanHeroStage")) $("scanHeroStage").classList.add("hidden");
+        if ($("scanResultsStage")) $("scanResultsStage").classList.remove("hidden");
+        if ($("mainTopbar")) $("mainTopbar").classList.remove("hidden");
+        if (state.payload) renderScanResults(state.payload);
       }
     };
     tick();
@@ -700,9 +684,10 @@
         showToast("Selecione pelo menos 1 item para otimizar.");
         return;
       }
+      state.lastOptimizedAt = new Date();
+      state.lastOptimizedCount = (state.lastOptimizedCount || 0) + selected.length;
       sendHost({ action: "applySmartOptimize", items: selected });
       showToast(`⚡ ${selected.length} otimização(ões) aplicadas com segurança!`);
-      returnToScanWithAppliedStatus(selected.length);
     });
   }
 
@@ -1823,6 +1808,7 @@
       $("scanBannerPill").classList.toggle("ok", isOk);
       if ($("btnRunScan")) $("btnRunScan").classList.toggle("optimized", isOk);
       if ($("scanBannerIco")) $("scanBannerIco").textContent = isWarn ? "!" : (isOk ? "✓" : "i");
+      if ($("scanOrbLabel")) $("scanOrbLabel").textContent = isOk ? "APLICADO" : "VERIFICAR";
 
       if (!t.IsAdmin) {
         $("scanBannerText").textContent = "Sem privilégios de Admin — clique em Verificar para liberar todos os sensores!";
@@ -1830,8 +1816,8 @@
         $("scanBannerText").textContent = `Temperatura alta (${fmtNum(maxT, 0)} °C) — clique em Verificar para otimizar!`;
       } else if (isOk) {
         const appliedNote = pendingAuto === 0
-          ? `PC otimizado e protegido! Nota ${diag.score}/100 • Clique em VERIFICAR para reavaliar quando quiser.`
-          : `Otimizações aplicadas! Nota ${diag.score}/100 (${pendingAuto} sugestão restante) • Clique para verificar novamente.`;
+          ? `Otimizações aplicadas! Nota ${diag.score}/100 • Clique no botão para verificar novamente.`
+          : `Ajustes aplicados! Nota ${diag.score}/100 (${pendingAuto} sugestão restante) • Clique para verificar novamente.`;
         $("scanBannerText").textContent = appliedNote;
       } else {
         $("scanBannerText").textContent = "Verifique para analisar consumo, eficiência Eco, temperaturas e saúde do seu PC!";
@@ -2348,7 +2334,7 @@
 
       const demo = {
         Type: "telemetry",
-        AppVersion: "1.0.1",
+        AppVersion: "1.0.2",
         DataDirectory: "C:\\Users\\Demo\\AppData\\Local\\PcPowerMonitor",
         Settings: {
           TariffPerKwh: 0.89,

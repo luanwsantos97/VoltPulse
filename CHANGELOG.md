@@ -3,6 +3,11 @@
 All notable changes to **VoltPulse** are documented in this file.
 Versioning follows clean sequential releases (`v1.0.0`, `v1.0.1`, `v1.0.2`, ...).
 
+## [1.0.2] — 2026-11-26
+
+### Improved
+- **Verify Hub UX**: always displays the full diagnostic result screen (efficiency score, active protections, and recommendations) when running a scan or applying optimizations so users clearly see the applied state, while the main circular button displays **`APLICADO`** when optimized (with `← Voltar para Verificar` and click-to-rescan anytime).
+
 ## [1.0.1] — 2026-11-26
 
 ### Fixed & Improved
