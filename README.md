@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-1.0.1-10b981?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/github/v/release/luanwsantos97/VoltPulse?style=for-the-badge&color=10b981&label=Version" alt="Version" />
   <img src="https://img.shields.io/badge/License-MIT-a78bfa?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/Languages-8%20Locales-f59e0b?style=for-the-badge" alt="Languages" />
   <img src="https://img.shields.io/badge/PRs-Welcome-38bdf8?style=for-the-badge" alt="PRs Welcome" />
@@ -52,11 +52,11 @@
 | **⚡ Energy & Cost Tracking** | Real-time estimated wall draw (W), automatic **Daily / Weekly (7d) / Monthly** accumulation in **kWh** and configurable currency (`$`, `R$`, `€`), monthly projection, **Hourly breakdown (00h–23h)**, **14-day interactive bar chart**, **Electricity Cost Simulator**, and 1-click **CSV export**. |
 | **🎮 Auto Game Mode & Quiet Tray** | Automatically detects launched games (Steam, Epic, Riot, Xbox, EA, Ubisoft, Battle.net, GOG, or fullscreen/GPU load), auto-starts/stops session metering, silences non-critical alerts, optionally shows the floating overlay while gaming, and runs in quiet background mode. |
 | **🎨 Frameless UI & 6 Themes** | Custom themed window titlebar (minimize/maximize/close + drag/resize, zero legacy Windows chrome), **6 built-in themes** (`Dark Slate`, `OLED Midnight`, `Cyber Neon`, `Forest Emerald`, `Sunset Carbon`, `Clean Light`), and **Dynamic Tray Icon** (`Logo` / live `CPU °C` / live `Watts`). |
-| **🛡️ Safe Eco / Undervolt & Ultra-Low Footprint** | Certified 1-click **Stock / Eco / Ultra Silent** profiles (plus **Auto Eco outside games**), using official Windows `powercfg` CPU boost/throttle limits and NVIDIA `nvidia-smi` power limits strictly within factory `[Min, Default]` bounds (integrated GPUs are safely ignored — zero MSR/BSOD risk). In the tray, VoltPulse suspends WebView2, enables Windows **EcoQoS**, switches to adaptive 5s polling, and reduces SSD writes by **90%**! |
+| **🛡️ Safe Eco / Undervolt & 1-Click Verify** | Animated **Verify & Optimize** hub with live efficiency score (0–100) and 1-click optimizations, certified **Stock / Eco / Ultra Silent** profiles (plus **Auto Eco outside games**, **Idle AFK**, and **Thermal Guard**), using official Windows `powercfg` (EPP/Boost/ASPM) and **AMD ADL + NVIDIA** power limits strictly within factory bounds (iGPUs safely excluded). In the tray, suspends WebView2, enables Windows **EcoQoS**, and cuts SSD writes by **90%**. |
 | **🌡️ Thermal Telemetry** | Animated SVG radial gauges for CPU and GPU with dynamic color zones (`Cool`, `Ideal`, `Warm`, `Critical`), live dual-line thermal chart with hover tooltips, and full sensor table (CPU, GPU Core, GPU Hot Spot, Motherboard/VRM, Storage). |
 | **🔌 Voltage Monitor + ATX ±5%** | Highlight cards for `+12V`, `+5V`, `VCore`, and `GPU Core`, automatic **ATX ±5% tolerance validation** on PSU/motherboard rails (`+12V`, `+5V`, `+3.3V`), search/category filters, and min/max oscillation (`Δ`). |
 | **💾 SSD / NVMe / HDD Health** | CrystalDiskInfo-style **Remaining Life (%)** circular gauge, health status (`Good`, `Caution`, `Critical`), temperature, **TBW (Total Bytes Written)**, Total Read, Power-On Hours & Count, TRIM status, used space bar, and expandable full **S.M.A.R.T. attributes** table. |
-| **🖥️ Floating Overlay & Alerts** | Compact, semi-transparent, draggable **Always-on-Top Mini Widget** (`W • CPU °C • GPU °C • RAM %`) plus native Windows toast notifications for **critical temperatures**, **out-of-spec ATX voltages**, and **monthly cost budgets**. |
+| **🖥️ Pro Mini Widget (HUD + Safe FPS)** | Per-pixel anti-aliased **Always-on-Top Mini Widget** with **Horizontal / Vertical** layouts, **Auto-hide (peek on hover)**, **Micro Mode**, transparency presets, and a **zero-injection ETW FPS counter** (`DXGI`/`D3D9`/`DxgKrnl`, 100% anti-cheat safe) active only while gaming, plus native Windows alerts. |
 | **🌐 Global Currency, 8 Languages & Boot** | **Auto-detects your country's currency & average kWh rate** from Windows (`BRL`, `USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `MXN`, `ARS`, `JPY`, `CNY`, `INR`, `KRW`, `PLN` + custom), **8 languages** (`PT-BR`, `EN-US`, `ES`, `FR`, `DE`, `IT`, `JA`, `ZH`), live Download/Upload network speed, Dark/Light theme, **UAC-free startup**, and 1-click auto-setup (PawnIO + WebView2). |
 
 ---
@@ -100,12 +100,15 @@ $$\text{Wall Power (W)} = \frac{\text{CPU (W)} + \text{GPU (W)} + \text{Other Se
 ## 🚀 Installation (End Users)
 
 ### Option A — Windows Installer (Recommended)
-1. Download **`VoltPulse-Setup-v3.2.0.exe`** from the [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest) page.
+1. Download the latest **`VoltPulse-Setup-v*.exe`** from the [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest) page.
 2. Run the installer — it installs cleanly to `C:\Program Files (x86)\VoltPulse`, registers in **Windows Apps & Features** (`HKLM\SOFTWARE\VoltPulse` + `App Paths`), creates **Start Menu & Desktop shortcuts**, automatically installs **PawnIO** and **WebView2** if missing, and optionally enables UAC-free startup!
 3. Open **Settings** to fine-tune your local electricity rate (currency & average rate are auto-detected from Windows).
 
 ### Option B — Portable ZIP
-1. Download **`VoltPulse-v3.2.0-win-x64.zip`** from [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest), extract anywhere, and run **`VoltPulse.exe`**.
+1. Download the latest **`VoltPulse-v*-win-x64.zip`** from [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest), extract anywhere, and run **`VoltPulse.exe`**.
+
+### 📖 Illustrated Beginner Guide (PT-BR PDF)
+- Download [`docs/Guia-Didatico-VoltPulse.pdf`](docs/Guia-Didatico-VoltPulse.pdf) for a complete step-by-step guide explaining how to calculate your real electricity rate, PSU efficiency, and base system watts.
 
 > **Tip:** You can also launch VoltPulse anytime via `Win + R` → type `voltpulse` → Enter!
 
@@ -140,16 +143,16 @@ cd VoltPulse
 # 2. Build executable -> dist/VoltPulse/VoltPulse.exe
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 
-# 3. Build + generate GitHub Release ZIP -> releases/VoltPulse-v3.0.0-win-x64.zip
-powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Version "3.0.0"
+# 3. Build + generate Release ZIP & Installer -> releases/
+powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.1"
 ```
 
 ### Automated Releases (GitHub Actions)
-This repository includes [`.github/workflows/release.yml`](.github/workflows/release.yml). Pushing any `v*` tag automatically compiles the project on `windows-latest` and publishes the release ZIP:
+This repository includes [`.github/workflows/release.yml`](.github/workflows/release.yml). Pushing any `v*` tag automatically compiles the project on `windows-latest` and publishes the release assets:
 
 ```bash
-git tag v3.0.0
-git push origin v3.0.0
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
 ### UI Preview Mode (Browser)

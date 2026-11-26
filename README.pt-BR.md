@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Plataforma-Windows%2010%2F11%20x64-0ea5e9?style=for-the-badge&logo=windows" alt="Plataforma" />
-  <img src="https://img.shields.io/badge/Vers%C3%A3o-1.0.1-10b981?style=for-the-badge" alt="Versão" />
+  <img src="https://img.shields.io/github/v/release/luanwsantos97/VoltPulse?style=for-the-badge&color=10b981&label=Vers%C3%A3o" alt="Versão" />
   <img src="https://img.shields.io/badge/Licen%C3%A7a-MIT-a78bfa?style=for-the-badge" alt="Licença" />
   <img src="https://img.shields.io/badge/Idiomas-8%20Idiomas-f59e0b?style=for-the-badge" alt="Idiomas" />
   <img src="https://img.shields.io/badge/PRs-Bem--vindos-38bdf8?style=for-the-badge" alt="PRs Bem-vindos" />
@@ -52,11 +52,11 @@ O **VoltPulse** é um aplicativo desktop leve, nativo e open-source para Windows
 | **⚡ Energia & Conta de Luz** | Potência estimada na tomada (W) ao vivo, acumulado automático de **Hoje**, **Semana (7 dias)** e **Mês Atual** em **kWh** e moeda configurável (`R$`, `$`, `€`), projeção mensal, **Consumo por Hora (00h–23h)**, **gráfico interativo de 14 dias**, **Simulador de Conta de Luz** e exportação **CSV** em 1 clique. |
 | **🎮 Modo Jogo Automático & Quieto** | Detecta automaticamente jogos iniciados (Steam, Epic, Riot, Xbox, EA, Ubisoft, Battle.net, GOG ou tela cheia/GPU), inicia e finaliza o medidor de sessão sozinho, silencia avisos não-críticos, abre o Overlay opcionalmente e roda quieto em segundo plano. |
 | **🎨 Janela Sem Bordas & 6 Temas** | Barra de título 100% integrada ao tema (Minimizar/Maximizar/Fechar estilizados, sem barra padrão do Windows), **6 temas visuais** (`Dark Slate`, `OLED Midnight`, `Cyber Neon`, `Forest Emerald`, `Sunset Carbon`, `Clean Light`) e **Ícone Dinâmico na Bandeja** (`Logo` / `CPU °C` / `Watts`). |
-| **🛡️ Eco / Undervolt Seguro & Ultra-Leve** | Perfis 1-clique certificados (**Padrão / Eco / Ultra Silencioso** + **Eco automático fora de jogos**) via `powercfg` oficial e `nvidia-smi` dentro da faixa `[Mín, Padrão]` de fábrica (GPUs integradas são bloqueadas por segurança — zero risco de BSOD). Na bandeja, suspende o WebView2, ativa **EcoQoS**, usa polling adaptativo de 5s e reduz em **90%** as escritas no SSD! |
+| **🛡️ Eco Engine Pro & Verificar (1 Clique)** | Central **Verificar** com nota de eficiência (0–100) e otimização em 1 clique, perfis certificados (**Stock / Eco / Ultra Silencioso** + **Eco fora de jogos**, **Idle AFK** e **Thermal Guard**) via `powercfg` oficial (EPP/Boost/ASPM) e drivers **AMD ADL + NVIDIA** dentro dos limites de fábrica (GPUs integradas bloqueadas por segurança). Na bandeja, suspende o WebView2, ativa **EcoQoS** e reduz em **90%** as escritas no SSD. |
 | **🌡️ Telemetria Térmica** | Medidores circulares SVG animados para CPU e GPU com faixas dinâmicas (`Frio`, `Ideal`, `Quente`, `Crítico`), gráfico térmico ao vivo com tooltip interativo e tabela completa (CPU, GPU Core, GPU Hot Spot, Placa-mãe/VRM e SSD/HD). |
 | **🔌 Voltagens & Validação ATX (±5%)** | Cards de destaque para `+12V`, `+5V`, `VCore` e `GPU Core`, validação automática da tolerância **ATX ±5%** nas trilhas da fonte/placa-mãe (`+12V`, `+5V`, `+3.3V`), busca, filtros por componente e cálculo de oscilação (`Δ = Máx − Mín`). |
 | **💾 Saúde & Vida Útil de SSD / HD** | Visual estilo **CrystalDiskInfo** com gauge circular de **Vida Útil (%)**, status (`Saudável`, `Atenção`, `Crítico`), temperatura, **TBW (Total Gravado)**, Total Lido, Horas Ligado, Nº de Ligações, TRIM, barra de espaço ocupado e tabela completa de atributos **S.M.A.R.T.**. |
-| **🖥️ Mini Widget Flutuante & Alertas** | **Overlay compacto** sempre no topo, arrastável e semi-transparente (`W • CPU °C • GPU °C • RAM %`) + notificações nativas do Windows para **temperatura crítica**, **voltagem ATX fora de faixa** e **meta de gasto mensal**. |
+| **🖥️ Mini Widget Pro (HUD + FPS Seguro)** | **Overlay anti-aliased** sempre no topo com modo **Horizontal / Vertical**, **Auto-ocultar (revela no mouse)**, **Modo Micro**, transparência ajustável e **contador de FPS 100% seguro** via ETW oficial do Windows (`DXGI`/`D3D9`/`DxgKrnl`, zero injeção / zero risco de anti-cheat) ativo apenas em jogos, além de alertas nativos. |
 | **🌐 Moeda Global, 8 Idiomas & Rede** | **Detecta automaticamente a moeda e tarifa padrão do seu país** pelo Windows (`R$`, `$`, `€`, `£`, `C$`, `A$`, `CHF`, `MX$`, `¥`, `₹`, `₩`, `zł` + custom), **8 idiomas** (`PT-BR`, `EN`, `ES`, `FR`, `DE`, `IT`, `JA`, `ZH`), tráfego de rede ao vivo, Tema Escuro/Claro, **boot sem UAC** e instalador automático (PawnIO + WebView2). |
 
 ---
@@ -108,12 +108,15 @@ O jeito mais preciso (que já inclui ICMS, PIS/COFINS e bandeira tarifária) é 
 ## 🚀 Instalação (Usuários Finais)
 
 ### Opção A — Instalador do Windows (Recomendado)
-1. Baixe **`VoltPulse-Setup-v3.2.0.exe`** na aba [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest).
+1. Baixe o **`VoltPulse-Setup-v*.exe`** mais recente na aba [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest).
 2. Execute o instalador — ele instala em `C:\Program Files (x86)\VoltPulse` (personalizável), registra no **Registro do Windows** (`HKLM\SOFTWARE\VoltPulse`, `App Paths` e **Aplicativos Instalados** com desinstalador oficial), cria atalhos no **Menu Iniciar e Área de Trabalho**, instala automaticamente o **PawnIO** e o **WebView2** caso faltem, e oferece a opção de **Iniciar com o Windows sem pop-up UAC**.
-3. Abra **Configurações** se quiser ajustar sua tarifa exata de energia (a moeda e tarifa média do país já são detectadas automaticamente pelo Windows).
+3. Abra **Ajustes** se quiser calibrar sua tarifa exata de energia (a moeda e tarifa média do país já são detectadas automaticamente pelo Windows).
 
 ### Opção B — Versão Portátil (ZIP)
-1. Baixe **`VoltPulse-v3.2.0-win-x64.zip`** em [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest), extraia em qualquer pasta e execute **`VoltPulse.exe`**.
+1. Baixe o **`VoltPulse-v*-win-x64.zip`** mais recente em [Releases](https://github.com/luanwsantos97/VoltPulse/releases/latest), extraia em qualquer pasta e execute **`VoltPulse.exe`**.
+
+### 📖 Guia Didático Ilustrado em PDF (Para Iniciantes)
+- Baixe [`docs/Guia-Didatico-VoltPulse.pdf`](docs/Guia-Didatico-VoltPulse.pdf) para aprender passo a passo como calcular a tarifa real da sua conta de luz (R$/kWh), descobrir a eficiência da fonte (80 Plus) e somar o consumo base extra.
 
 > **Dica:** Depois de instalado, você pode abrir o VoltPulse de qualquer lugar pressionando `Win + R` → digite `voltpulse` → Enter!
 
@@ -148,16 +151,16 @@ cd VoltPulse
 # 2. Compilar executável -> dist/VoltPulse/VoltPulse.exe
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 
-# 3. Compilar + gerar o .zip pronto para GitHub Releases -> releases/VoltPulse-v3.0.0-win-x64.zip
-powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Version "3.0.0"
+# 3. Compilar + gerar o .zip e instalador prontos -> releases/
+powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.1"
 ```
 
 ### Releases Automáticas (GitHub Actions)
-O repositório já vem com [`.github/workflows/release.yml`](.github/workflows/release.yml). Sempre que você enviar uma tag `v*`, o próprio GitHub compila tudo em `windows-latest` e publica o `.zip` automaticamente na página de Releases:
+O repositório já vem com [`.github/workflows/release.yml`](.github/workflows/release.yml). Sempre que você enviar uma tag `v*`, o próprio GitHub compila tudo em `windows-latest` e publica automaticamente na página de Releases:
 
 ```bash
-git tag v3.0.0
-git push origin v3.0.0
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
 ### Pré-visualização Rápida da UI no Navegador
