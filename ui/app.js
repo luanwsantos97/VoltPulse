@@ -2306,6 +2306,9 @@
     sendHost({ action: "ready" });
   } else {
     // Modo preview no navegador (dados simulados realistas para desenvolvimento/screenshots)
+    const demoParams = new URLSearchParams(window.location.search || "");
+    const demoLang = demoParams.get("lang") || "pt-BR";
+    const demoView = demoParams.get("view") || "scan";
     let tick = 0;
     const demoDays = [];
     const today = new Date();
@@ -2335,18 +2338,50 @@
       const demo = {
         Type: "telemetry",
         AppVersion: "1.0.2",
+        AppMemoryMb: 46.8,
         DataDirectory: "C:\\Users\\Demo\\AppData\\Local\\PcPowerMonitor",
         Settings: {
-          TariffPerKwh: 0.89,
-          CurrencySymbol: "R$",
+          TariffPerKwh: demoLang === "en-US" ? 0.17 : 0.89,
+          CurrencySymbol: demoLang === "en-US" ? "$" : "R$",
           PsuEfficiencyPercent: 85,
           BaseSystemWatts: 30,
           PollIntervalSeconds: 2,
           TempWarningC: 75,
           TempCriticalC: 88,
           MinimizeToTrayOnClose: true,
-          StartWithWindows: false,
+          StartWithWindows: true,
+          AutoEcoOutsideGames: true,
+          AutoIdleEco: true,
+          AutoIdleMinutes: 10,
+          ThermalGuardEnabled: true,
+          ThermalGuardLimitC: 85,
+          Language: demoLang,
+          StartView: demoView,
           Theme: document.documentElement.getAttribute("data-theme") || "dark"
+        },
+        Tuning: {
+          ActiveProfile: "eco",
+          EffectiveReason: "manual",
+          BaselineStockWatts: 186,
+          EstimatedWattsSaved: 42.6,
+          CpuMaxPercent: 99,
+          CpuEpp: 65,
+          CpuBoostMode: 3,
+          PassiveCooling: true,
+          PcieAspmEco: true,
+          HasDedicatedGpu: true,
+          DedicatedGpuVendor: "AMD",
+          DedicatedGpuName: "AMD Radeon RX 580 2048SP",
+          GpuPowerLimitSupported: true,
+          GpuControlBackend: "AMD ADL OverdriveN",
+          GpuMinPercent: 70,
+          GpuPowerLimitPercent: 85,
+          GpuDefaultWatts: 150,
+          GpuCurrentLimitWatts: 127,
+          ThermalGuardTriggered: false,
+          IdleEcoTriggered: false,
+          SafetyNote: "GPU dedicada AMD pronta via AMD ADL OverdriveN oficial! Redução segura de Power Limit certificada pela VBIOS (70% – 100%, nunca acima de fábrica).",
+          LastActionMessage: "Aplicado com segurança: CPU 99% (EPP 65) • Resfriamento Passivo • PCIe ASPM • AMD GPU 85% (-15%)"
         },
         Telemetry: {
           TimeLabel: new Date().toLocaleTimeString("pt-BR"),
@@ -2366,6 +2401,7 @@
           GpuTempC: gpuT,
           GpuHotspotC: gpuT + 9.4,
           MaxStorageTempC: 39.0,
+          MinDiskHealthPercent: 94,
           CpuLoadPercent: 26 + Math.sin(tick * 0.5) * 12,
           GpuLoadPercent: 34 + Math.cos(tick * 0.3) * 15,
           RamLoadPercent: 54.2,
@@ -2407,22 +2443,52 @@
             { HardwareType: "CPU", HardwareName: "Intel i5-12400F", SensorName: "CPU Total", Value: 26.4, Min: 3, Max: 89, Unit: "%" },
             { HardwareType: "GPU", HardwareName: "AMD RX 580", SensorName: "GPU Core", Value: 34.1, Min: 0, Max: 99, Unit: "%" },
             { HardwareType: "Memória", HardwareName: "Generic Memory", SensorName: "Memory", Value: 54.2, Min: 42, Max: 78, Unit: "%" }
+          ],
+          Disks: [
+            {
+              DriveNumber: 0,
+              Model: "Micron 2300 NVMe 512GB",
+              DriveLetters: "C:",
+              MediaType: "SSD NVMe",
+              InterfaceType: "NVMe PCIe 3.0 x4",
+              Firmware: "23000030",
+              TrimSupported: true,
+              HealthPercent: 94,
+              HealthCode: "good",
+              HealthStatus: demoLang === "en-US" ? "Healthy" : "Saudável",
+              TemperatureC: 39,
+              TotalWrittenGb: 38400,
+              TotalReadGb: 41200,
+              PowerOnHours: 4120,
+              PowerOnCount: 985,
+              TotalSizeGb: 477,
+              FreeSizeGb: 162,
+              UsedPercent: 66,
+              SmartAttributes: [
+                { IdHex: "0x01", Name: "Critical Warning", Current: 0, Worst: 0, Threshold: 0, RawValue: "0" },
+                { IdHex: "0x02", Name: "Composite Temperature", Current: 39, Worst: 54, Threshold: 75, RawValue: "312 K" },
+                { IdHex: "0x03", Name: "Available Spare", Current: 100, Worst: 100, Threshold: 10, RawValue: "100%" },
+                { IdHex: "0x05", Name: "Percentage Used", Current: 6, Worst: 6, Threshold: 100, RawValue: "6%" },
+                { IdHex: "0x06", Name: "Data Units Read", Current: 100, Worst: 100, Threshold: 0, RawValue: "84,377,600" },
+                { IdHex: "0x07", Name: "Data Units Written", Current: 100, Worst: 100, Threshold: 0, RawValue: "78,643,200" }
+              ]
+            }
           ]
         },
         Summary: {
           TodayKwh: 0.74,
-          TodayCost: 0.74 * 0.89,
+          TodayCost: 0.74 * (demoLang === "en-US" ? 0.17 : 0.89),
           TodayActiveHours: 5.2,
           TodayPeakWatts: 248,
           TodayAvgWatts: 142,
           WeekKwh: 7.42,
-          WeekCost: 7.42 * 0.89,
+          WeekCost: 7.42 * (demoLang === "en-US" ? 0.17 : 0.89),
           WeekAvgDailyKwh: 1.06,
           WeekDaysRecorded: 7,
           MonthKwh: 22.8,
-          MonthCost: 22.8 * 0.89,
+          MonthCost: 22.8 * (demoLang === "en-US" ? 0.17 : 0.89),
           ProjectedMonthKwh: 31.8,
-          ProjectedMonthCost: 31.8 * 0.89,
+          ProjectedMonthCost: 31.8 * (demoLang === "en-US" ? 0.17 : 0.89),
           MonthDaysRecorded: 21,
           Last14Days: demoDays,
           AllDays: [...demoDays].reverse()
@@ -2431,7 +2497,14 @@
       render(demo);
     };
 
-    pushDemo();
+    for (let k = 0; k < 60; k++) pushDemo();
+    if (demoView && demoView !== "scan") {
+      switchView(demoView);
+      if (demoView === "disks") {
+        openSmartDisks.add(0);
+        pushDemo();
+      }
+    }
     setInterval(pushDemo, 2000);
   }
 })();

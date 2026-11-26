@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Banner VoltPulse" width="100%" />
+  <img src="assets/banner-pt-BR.svg" alt="Banner VoltPulse" width="100%" />
 </p>
 
 <p align="center">
-  <a href="README.md"><strong>🇺🇸 English</strong></a> &nbsp;|&nbsp; <strong>🇧🇷 Português (Brasil)</strong>
+  <a href="README.md"><strong>🇺🇸 English</strong></a> &nbsp;•&nbsp; <strong>🇧🇷 Português (Brasil)</strong>
 </p>
 
 <p align="center">
@@ -23,6 +23,7 @@ O **VoltPulse** é um aplicativo desktop leve, nativo e open-source para Windows
 
 ## Índice
 
+- [Capturas de Tela](#-capturas-de-tela)
 - [Recursos Principais](#-recursos-principais)
 - [Como Funciona (Arquitetura)](#-como-funciona-arquitetura)
 - [Cálculo de Energia e Como Achar Sua Tarifa (R$/kWh)](#-cálculo-de-energia-e-como-achar-sua-tarifa-rkwh)
@@ -39,9 +40,9 @@ O **VoltPulse** é um aplicativo desktop leve, nativo e open-source para Windows
 
 | Central Verificar & Otimizar (1 Clique) | Dashboard em Tempo Real |
 | :---: | :---: |
-| ![VoltPulse Verificar](assets/screenshots/verify-hub.png) | ![VoltPulse Dashboard](assets/screenshots/dashboard.jpg) |
+| ![VoltPulse Verificar](assets/screenshots/verify-hub.png) | ![VoltPulse Dashboard](assets/screenshots/dashboard.png) |
 | **Eco & Undervolt Seguro** | **Saúde & Vida Útil de SSD (S.M.A.R.T.)** |
-| ![VoltPulse Eco & Undervolt](assets/screenshots/eco-undervolt.jpg) | ![VoltPulse Saúde SSD](assets/screenshots/ssd-health.png) |
+| ![VoltPulse Eco & Undervolt](assets/screenshots/eco-undervolt.png) | ![VoltPulse Saúde SSD](assets/screenshots/ssd-health.png) |
 
 ---
 
@@ -152,15 +153,15 @@ cd VoltPulse
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 # 3. Compilar + gerar o .zip e instalador prontos -> releases/
-powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.1"
+powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.2"
 ```
 
 ### Releases Automáticas (GitHub Actions)
 O repositório já vem com [`.github/workflows/release.yml`](.github/workflows/release.yml). Sempre que você enviar uma tag `v*`, o próprio GitHub compila tudo em `windows-latest` e publica automaticamente na página de Releases:
 
 ```bash
-git tag v1.0.1
-git push origin v1.0.1
+git tag v1.0.2
+git push origin v1.0.2
 ```
 
 ### Pré-visualização Rápida da UI no Navegador
@@ -179,9 +180,9 @@ Você pode abrir `ui/index.html` diretamente no navegador para editar ou visuali
 ## ❓ Solução de Problemas (FAQ)
 
 - **Os sensores da CPU ou da placa-mãe aparecem zerados ou `--`?**
-  Confirme que o app foi aberto em Modo Administrador e que o driver **PawnIO** está instalado (clique em **Configurações → Instalar / Verificar Dependências**).
+  Confirme que o app foi aberto em Modo Administrador e que o driver **PawnIO** está instalado (clique em **Ajustes → Instalar / Verificar Dependências**).
 - **Por que pode haver pequena diferença em relação a um wattímetro de tomada?**
-  Softwares não medem a perda exata da fonte em cada faixa de carga nem periféricos externos (monitor, caixa de som, roteador). Ajustando **Eficiência da Fonte (%)** e **Consumo Base Extra (W)** nas Configurações, a estimativa costuma ficar dentro de ~5% do valor real.
+  Softwares não medem a perda exata da fonte em cada faixa de carga nem periféricos externos (monitor, caixa de som, roteador). Ajustando **Eficiência da Fonte (%)** e **Consumo Base Extra (W)** em **Ajustes**, a estimativa costuma ficar dentro de ~5% do valor real.
 - **Ao clicar no `X`, o programa para de contar o consumo?**
   Não! Por padrão ele minimiza para a bandeja do sistema para continuar somando o consumo do dia. Para encerrar completamente, clique com o botão direito no ícone da bandeja → **Sair completamente**.
 

@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>🇺🇸 English</strong> &nbsp;|&nbsp; <a href="README.pt-BR.md"><strong>🇧🇷 Português (Brasil)</strong></a>
+  <strong>🇺🇸 English</strong> &nbsp;•&nbsp; <a href="README.pt-BR.md"><strong>🇧🇷 Português (Brasil)</strong></a>
 </p>
 
 <p align="center">
@@ -23,6 +23,7 @@
 
 ## Table of Contents
 
+- [Screenshots](#-screenshots)
 - [Key Features](#-key-features)
 - [How It Works (Architecture)](#-how-it-works-architecture)
 - [Power & Cost Calculation Formula](#-power--cost-calculation-formula)
@@ -39,9 +40,9 @@
 
 | 1-Click Smart Verify & Optimize Hub | Real-Time Dashboard |
 | :---: | :---: |
-| ![VoltPulse Smart Verify](assets/screenshots/verify-hub.png) | ![VoltPulse Dashboard](assets/screenshots/dashboard.jpg) |
+| ![VoltPulse Smart Verify](assets/screenshots/verify-hub.png) | ![VoltPulse Dashboard](assets/screenshots/dashboard.png) |
 | **Safe Eco & Thermal Undervolt** | **SSD / NVMe S.M.A.R.T. Health** |
-| ![VoltPulse Eco & Undervolt](assets/screenshots/eco-undervolt.jpg) | ![VoltPulse SSD Health](assets/screenshots/ssd-health.png) |
+| ![VoltPulse Eco & Undervolt](assets/screenshots/eco-undervolt.png) | ![VoltPulse SSD Health](assets/screenshots/ssd-health.png) |
 
 ---
 
@@ -144,15 +145,15 @@ cd VoltPulse
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 # 3. Build + generate Release ZIP & Installer -> releases/
-powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.1"
+powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.2"
 ```
 
 ### Automated Releases (GitHub Actions)
 This repository includes [`.github/workflows/release.yml`](.github/workflows/release.yml). Pushing any `v*` tag automatically compiles the project on `windows-latest` and publishes the release assets:
 
 ```bash
-git tag v1.0.1
-git push origin v1.0.1
+git tag v1.0.2
+git push origin v1.0.2
 ```
 
 ### UI Preview Mode (Browser)
