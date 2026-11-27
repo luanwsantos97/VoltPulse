@@ -301,6 +301,10 @@
   if ($("btnToolToggleApi")) $("btnToolToggleApi").addEventListener("click", () => sendHost({ action: "toggleLocalApi" }));
   if ($("btnToolCheckUpd")) $("btnToolCheckUpd").addEventListener("click", () => { showToast("Verificando atualizações no GitHub..."); sendHost({ action: "checkUpdates" }); });
   if ($("btnToolInstallDeps")) $("btnToolInstallDeps").addEventListener("click", () => sendHost({ action: "installDeps" }));
+  if ($("btnToolUsbShield")) $("btnToolUsbShield").addEventListener("click", () => {
+    showToast("Aplicando blindagem USB, PCIe e Wi-Fi...");
+    sendHost({ action: "optimizeUsbPeripherals" });
+  });
 
   // ==================== MOTOR DA TELA VERIFICAR (DRIVER BOOSTER × VOLTPULSE) ====================
   function buildScanDiagnostics(payload) {
@@ -2337,7 +2341,7 @@
 
       const demo = {
         Type: "telemetry",
-        AppVersion: "1.0.2",
+        AppVersion: "1.0.3",
         AppMemoryMb: 46.8,
         DataDirectory: "C:\\Users\\Demo\\AppData\\Local\\PcPowerMonitor",
         Settings: {

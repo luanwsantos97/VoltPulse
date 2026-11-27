@@ -44,6 +44,7 @@ namespace PcPowerMonitor
 
         private bool _isHovered;
         private bool _menuOpen;
+        private bool _gameClickThrough;
         private readonly Timer _hideDelayTimer;
 
         private ToolStripMenuItem _verticalMenuItem;
@@ -67,6 +68,12 @@ namespace PcPowerMonitor
 
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
         [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
         private static extern bool UpdateLayeredWindow(
@@ -100,8 +107,11 @@ namespace PcPowerMonitor
 
         private const int WM_NCLBUTTONDOWN = 0xA1;
         private const int HTCAPTION = 0x2;
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_TRANSPARENT = 0x00000020;
         private const int WS_EX_LAYERED = 0x00080000;
         private const int WS_EX_TOOLWINDOW = 0x00000080;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
         private const byte AC_SRC_OVER = 0x00;
         private const byte AC_SRC_ALPHA = 0x01;
         private const int ULW_ALPHA = 0x02;
@@ -813,12 +823,37 @@ namespace PcPowerMonitor
             base.Dispose(disposing);
         }
 
+        public void SetGameClickThrough(bool enabled)
+        {
+            if (_gameClickThrough == enabled) return;
+            _gameClickThrough = enabled;
+            if (!IsHandleCreated || IsDisposed) return;
+            try
+            {
+                int ex = GetWindowLong(Handle, GWL_EXSTYLE);
+                if (enabled)
+                    ex |= WS_EX_TRANSPARENT | WS_EX_NOACTIVATE;
+                else
+                    ex &= ~WS_EX_TRANSPARENT;
+                SetWindowLong(Handle, GWL_EXSTYLE, ex);
+                if (enabled && _isHovered)
+                {
+                    _isHovered = false;
+                    RenderLayered();
+                }
+            }
+            catch { }
+        }
+
+        protected override bool ShowWithoutActivation { get { return true; } }
+
         protected override CreateParams CreateParams
         {
             get
             {
                 var cp = base.CreateParams;
-                cp.ExStyle |= WS_EX_TOOLWINDOW | WS_EX_LAYERED;
+                cp.ExStyle |= WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE;
+                if (_gameClickThrough) cp.ExStyle |= WS_EX_TRANSPARENT;
                 return cp;
             }
         }

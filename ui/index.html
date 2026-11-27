@@ -671,8 +671,8 @@
 
             <button type="button" class="profile-card" id="profUltra" data-prof="ultra_eco">
               <div class="prof-head"><span class="prof-ico">🤫</span><strong>Ultra Silencioso</strong></div>
-              <p>EPP 90 + Boost Off + Resfriamento Passivo + PCIe ASPM + GPU -25%: ideal para trabalho leve, estudos ou downloads.</p>
-              <span class="prof-meta">CPU 85% • EPP 90 • ASPM • GPU 75%</span>
+              <p>EPP 90 + Boost Off + Resfriamento Passivo + GPU -25%: ideal para trabalho leve, estudos ou downloads (sem tocar em USB/PCIe).</p>
+              <span class="prof-meta">CPU 85% • EPP 90 • Passivo • GPU 75%</span>
             </button>
           </div>
 
@@ -756,7 +756,7 @@
                 </label>
                 <label class="toggle-row">
                   <input type="checkbox" id="chkTunAspm" />
-                  <span>PCIe ASPM Economia Máxima (reduz consumo em idle do barramento PCIe)</span>
+                  <span>PCIe ASPM Economia Máxima (avançado — ⚠ pode causar quedas em mouses/periféricos sem fio USB)</span>
                 </label>
               </div>
             </div>
@@ -1017,6 +1017,18 @@
               </div>
               <p>Integre a telemetria ao vivo do VoltPulse (Watts, Temps, FPS) com <strong>Home Assistant</strong> ou <strong>Stream Deck</strong>.</p>
               <button type="button" class="btn btn-ghost btn-sm" id="btnToolToggleApi">Ativar / Desativar API</button>
+            </div>
+          </div>
+
+          <div class="card tool-card">
+            <div class="tool-ico cyan">🖱️</div>
+            <div class="tool-body">
+              <div class="tool-head">
+                <strong>Blindagem USB &amp; Mouse Sem Fio (Anti-Quedas)</strong>
+                <span class="badge badge-ok" id="toolUsbStatus">Pronto</span>
+              </div>
+              <p>Desativa suspensão seletiva USB, desligamento automático dos Hubs/Receptores USB, PCIe ASPM e varredura agressiva de Wi-Fi 2,4 GHz para eliminar travamentos em jogos.</p>
+              <button type="button" class="btn btn-primary btn-sm" id="btnToolUsbShield">🛡️ Blindar USB &amp; Mouse Agora</button>
             </div>
           </div>
 

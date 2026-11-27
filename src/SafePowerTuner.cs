@@ -76,10 +76,14 @@ namespace PcPowerMonitor
 
         private const string SubPcie = "501a4d13-42af-4429-9fd1-a8218c268e20";
         private const string SetPcieAspm = "ee12f906-d277-404b-b6da-e5fa1a576df5";
+        private const string SubUsb = "2a737441-1930-4402-8d77-b2bebba308a3";
+        private const string SetUsbSelectiveSuspend = "48e6b7a6-50f5-4782-a5d4-53bb8f07e226";
 
         private string _nvidiaSmiPath;
         private readonly AmdAdlPowerController _amdAdl = new AmdAdlPowerController();
         private readonly PowerTuningStatus _status = new PowerTuningStatus();
+        private bool _powerCfgAppliedOnce;
+        private string _lastPowerCfgSignature;
 
         public SafePowerTuner()
         {
@@ -290,8 +294,9 @@ namespace PcPowerMonitor
                     return ApplyCustom("eco", 99, 5, 3, 65, false, false, 85, autoEcoOutsideGames, reason);
 
                 case "ultra_eco":
-                    // Ultra Silencioso: CPU 85% (min 5%) + Boost Off + EPP 90 + Resfriamento Passivo + PCIe ASPM + GPU 75% (-25%)
-                    return ApplyCustom("ultra_eco", 85, 5, 0, 90, true, true, 75, autoEcoOutsideGames, reason);
+                    // Ultra Silencioso: CPU 85% (min 5%) + Boost Off + EPP 90 + Resfriamento Passivo + GPU 75% (-25%)
+                    // PCIe ASPM mantido desligado por padrao para evitar engasgos/quedas em mouses e perifericos sem fio USB
+                    return ApplyCustom("ultra_eco", 85, 5, 0, 90, true, false, 75, autoEcoOutsideGames, reason);
 
                 default:
                     // Padrao de Fabrica (Stock): CPU 100% (min 5%) + Boost Agressivo + EPP 0 + Ativo + PCIe Off + GPU 100%
@@ -330,16 +335,23 @@ namespace PcPowerMonitor
 
             var notes = new List<string>();
 
-            // 1. CPU & Sistema via powercfg oficial (AC e DC)
+            // 1. CPU & Sistema via powercfg oficial (AC e DC) — evita chamadas redundantes se nada mudou
             try
             {
-                SetPowerCfgValue(SubProcessor, SetProcThrottleMin, cpuMinPct);
-                SetPowerCfgValue(SubProcessor, SetProcThrottleMax, cpuMaxPct);
-                SetPowerCfgValue(SubProcessor, SetPerfBoostMode, cpuBoostMode);
-                SetPowerCfgValue(SubProcessor, SetPerfEpp, cpuEpp);
-                SetPowerCfgValue(SubProcessor, SetCoolingPolicy, passiveCooling ? 0 : 1);
-                SetPowerCfgValue(SubPcie, SetPcieAspm, pcieAspmEco ? 2 : 0);
-                RunHidden("powercfg.exe", "/setactive SCHEME_CURRENT");
+                string sig = string.Format("{0}:{1}:{2}:{3}:{4}:{5}",
+                    cpuMinPct, cpuMaxPct, cpuBoostMode, cpuEpp, passiveCooling ? 0 : 1, pcieAspmEco ? 2 : 0);
+                if (!_powerCfgAppliedOnce || !string.Equals(_lastPowerCfgSignature, sig, StringComparison.Ordinal))
+                {
+                    SetPowerCfgValue(SubProcessor, SetProcThrottleMin, cpuMinPct);
+                    SetPowerCfgValue(SubProcessor, SetProcThrottleMax, cpuMaxPct);
+                    SetPowerCfgValue(SubProcessor, SetPerfBoostMode, cpuBoostMode);
+                    SetPowerCfgValue(SubProcessor, SetPerfEpp, cpuEpp);
+                    SetPowerCfgValue(SubProcessor, SetCoolingPolicy, passiveCooling ? 0 : 1);
+                    SetPowerCfgValue(SubPcie, SetPcieAspm, pcieAspmEco ? 2 : 0);
+                    RunHidden("powercfg.exe", "/setactive SCHEME_CURRENT");
+                    _powerCfgAppliedOnce = true;
+                    _lastPowerCfgSignature = sig;
+                }
 
                 notes.Add(string.Format("CPU {0}% (EPP {1})", cpuMaxPct, cpuEpp));
                 if (pcieAspmEco) notes.Add("PCIe ASPM");
@@ -388,6 +400,83 @@ namespace PcPowerMonitor
             _status.IdleEcoTriggered = false;
             _status.ThermalGuardTriggered = false;
             ApplyProfile("stock", false, "manual");
+        }
+
+        /// <summary>
+        /// Desativa economia agressiva de energia em USB/PCIe e reduz varredura agressiva de Wi-Fi 2.4 GHz
+        /// para eliminar desconexoes/engasgos em mouses e receptores sem fio durante jogos.
+        /// </summary>
+        public string OptimizeUsbAndWirelessPeripherals()
+        {
+            int usbDisabled = 0;
+            bool wifiTuned = false;
+
+            // 1. Garante PCIe ASPM = 0 e Suspensao Seletiva USB = 0 (AC e DC)
+            try
+            {
+                SetPowerCfgValue(SubPcie, SetPcieAspm, 0);
+                SetPowerCfgValue(SubUsb, SetUsbSelectiveSuspend, 0);
+                RunHidden("powercfg.exe", "/setactive SCHEME_CURRENT");
+                _status.PcieAspmEco = false;
+                _powerCfgAppliedOnce = false;
+                _lastPowerCfgSignature = null;
+            }
+            catch { }
+
+            // 2. Desativa "Permitir que o computador desligue este dispositivo para economizar energia" nos Hubs/Perifericos USB
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher(@"root\wmi", "SELECT * FROM MSPower_DeviceEnable"))
+                {
+                    foreach (ManagementObject mo in searcher.Get())
+                    {
+                        try
+                        {
+                            string inst = Convert.ToString(mo["InstanceName"]) ?? "";
+                            if (inst.IndexOf("USB", StringComparison.OrdinalIgnoreCase) < 0 &&
+                                inst.IndexOf("HID", StringComparison.OrdinalIgnoreCase) < 0 &&
+                                inst.IndexOf("ROOT_HUB", StringComparison.OrdinalIgnoreCase) < 0)
+                                continue;
+
+                            bool enabled = false;
+                            try { enabled = Convert.ToBoolean(mo["Enable"]); } catch { }
+                            if (enabled)
+                            {
+                                mo["Enable"] = false;
+                                mo.Put();
+                                usbDisabled++;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // 3. Reduz varredura agressiva de roaming Wi-Fi (5 -> 2) e desativa economia MIMO SMPS para evitar picos 2.4 GHz
+            try
+            {
+                string psCmd =
+                    "$ErrorActionPreference='SilentlyContinue';" +
+                    "Get-NetAdapter -Physical | Where-Object { $_.Status -eq 'Up' -and $_.MediaType -match '802.11|Native 802.11' } | ForEach-Object {" +
+                    "  $n=$_.Name;" +
+                    "  $r=Get-NetAdapterAdvancedProperty -Name $n -RegistryKeyword 'RoamAggressiveness';" +
+                    "  if($r -and [int]$r.RegistryValue -ge 4){ Set-NetAdapterAdvancedProperty -Name $n -RegistryKeyword 'RoamAggressiveness' -RegistryValue 2; Write-Output 'WIFI_OK' }" +
+                    "  $m=Get-NetAdapterAdvancedProperty -Name $n -RegistryKeyword 'MIMOPowerSaveMode';" +
+                    "  if($m -and [int]$m.RegistryValue -ne 3){ Set-NetAdapterAdvancedProperty -Name $n -RegistryKeyword 'MIMOPowerSaveMode' -RegistryValue 3; Write-Output 'WIFI_OK' }" +
+                    "}";
+                string outStr = RunCommandCapture("powershell.exe", "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"" + psCmd + "\"");
+                if (!string.IsNullOrEmpty(outStr) && outStr.IndexOf("WIFI_OK", StringComparison.OrdinalIgnoreCase) >= 0)
+                    wifiTuned = true;
+            }
+            catch { }
+
+            string msg = string.Format(
+                "✓ Blindagem aplicada: ASPM & Suspensão USB desligados, {0} dispositivo(s) USB protegidos{1}!",
+                usbDisabled,
+                wifiTuned ? " e Wi-Fi otimizado" : "");
+            _status.LastActionMessage = msg;
+            return msg;
         }
 
         private static void SetPowerCfgValue(string subGroup, string settingGuid, int value)

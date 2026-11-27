@@ -3,6 +3,15 @@
 All notable changes to **VoltPulse** are documented in this file.
 Versioning follows clean sequential releases (`v1.0.0`, `v1.0.1`, `v1.0.2`, ...).
 
+## [1.0.3] — 2026-11-27
+
+### Fixed & Improved (Gaming & USB Peripheral Shield)
+- **Zero USB HID Interference**: disabled `IsControllerEnabled` and `IsPsuEnabled` (`HidSharp`) in `HardwareMonitorService` so VoltPulse never probes or touches USB HID peripherals (wireless mice, keyboards, headsets).
+- **Ultra-Low Latency Game Mode Polling**: while a game is running in the background, VoltPulse switches to a lightweight visitor that updates only CPU, GPU, and RAM (`1.5s` interval), skipping heavy LPC/SMBus motherboard SuperIO and SSD S.M.A.R.T. polls to prevent DPC/USB micro-stutters.
+- **Safer Eco Profiles (No Auto PCIe ASPM)**: removed automatic `PCIe ASPM = 2` from the `Ultra Silencioso` profile (now manual advanced-only with a wireless peripheral warning) and added `powercfg` change deduplication to stop redundant Windows power-policy broadcasts.
+- **Click-Through Mini Widget in Games**: `OverlayForm` now uses permanent `WS_EX_NOACTIVATE` and dynamically enables `WS_EX_TRANSPARENT` during gameplay so it never steals focus or intercepts mouse clicks.
+- **1-Click USB & Wireless Mouse Shield (Tools Tab)**: new `🛡️ Blindagem USB & Mouse Sem Fio` tool disables PCIe ASPM, USB Selective Suspend, Windows power-off on USB Root Hubs/Hubs/HID devices, and aggressive Wi-Fi 2.4 GHz roaming scans/MIMO power saving.
+
 ## [1.0.2] — 2026-11-26
 
 ### Improved

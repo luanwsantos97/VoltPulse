@@ -17,7 +17,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "1.0.2";
+        public const string AppVersion = "1.0.3";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
@@ -837,6 +837,32 @@ namespace PcPowerMonitor
                         PollAndPush(true);
                         break;
 
+                    case "optimizeUsbPeripherals":
+                        _settings.CustomPcieAspmEco = false;
+                        _storage.SaveSettings(_settings);
+                        Task.Run(() =>
+                        {
+                            string resultMsg = _tuner.OptimizeUsbAndWirelessPeripherals();
+                            try
+                            {
+                                BeginInvoke(new Action(() =>
+                                {
+                                    PollAndPush(true);
+                                    if (_webReady && _webView != null && _webView.CoreWebView2 != null)
+                                    {
+                                        var toastMsg = new Dictionary<string, object>
+                                        {
+                                            { "Type", "toast" },
+                                            { "Message", resultMsg }
+                                        };
+                                        _webView.CoreWebView2.PostWebMessageAsJson(_json.Serialize(toastMsg));
+                                    }
+                                }));
+                            }
+                            catch { }
+                        });
+                        break;
+
                     case "openUrl":
                         if (msg.ContainsKey("url"))
                         {
@@ -1091,9 +1117,9 @@ namespace PcPowerMonitor
             bool overlayVisible = _overlayForm != null && !_overlayForm.IsDisposed && _overlayForm.Visible;
             bool bgUltraLow = !uiVisible && _settings.UltraLowBackgroundMode;
 
-            // Ajusta intervalo adaptativo: 1s em jogo c/ Mini Widget, 5s na bandeja sem widget, ou intervalo configurado
+            // Ajusta intervalo adaptativo: 1.5s em jogo c/ Mini Widget (baixa latencia), 5s na bandeja sem widget, ou intervalo configurado
             int targetInterval = (overlayVisible && _lastGameMode.Active)
-                ? 1000
+                ? 1500
                 : ((bgUltraLow && !overlayVisible)
                     ? Math.Max(5000, _settings.PollIntervalSeconds * 1000)
                     : Math.Max(1000, _settings.PollIntervalSeconds * 1000));
@@ -1104,7 +1130,7 @@ namespace PcPowerMonitor
             double elapsed = (nowUtc - _lastTickUtc).TotalSeconds;
             _lastTickUtc = nowUtc;
 
-            var snap = _monitor.Capture(_settings, _paused, bgUltraLow);
+            var snap = _monitor.Capture(_settings, _paused, bgUltraLow, _lastGameMode.Active && !uiVisible);
             _lastSnapshot = snap;
 
             // Modo Jogo Automatico + Auto Eco + Idle AFK + Thermal Guard
@@ -1134,9 +1160,10 @@ namespace PcPowerMonitor
 
             var summary = _storage.GetSummary(_settings.TariffPerKwh);
 
-            // Atualiza Overlay se visivel
+            // Atualiza Overlay se visivel (click-through automatico durante jogos para nunca interceptar mouse)
             if (_overlayForm != null && !_overlayForm.IsDisposed && _overlayForm.Visible)
             {
+                _overlayForm.SetGameClickThrough(_lastGameMode.Active);
                 _overlayForm.UpdateMetrics(snap, _settings);
             }
 

@@ -14,6 +14,7 @@ namespace PcPowerMonitor
     {
         private readonly Computer _computer;
         private readonly UpdateVisitor _visitor = new UpdateVisitor();
+        private readonly GameModeUpdateVisitor _gameVisitor = new GameModeUpdateVisitor();
         private readonly bool _isAdmin;
         private bool _disposed;
         private string _initError;
@@ -45,8 +46,8 @@ namespace PcPowerMonitor
                 IsGpuEnabled = true,
                 IsMotherboardEnabled = true,
                 IsMemoryEnabled = true,
-                IsPsuEnabled = true,
-                IsControllerEnabled = true,
+                IsPsuEnabled = false,
+                IsControllerEnabled = false,
                 IsStorageEnabled = true,
                 IsNetworkEnabled = true,
                 IsBatteryEnabled = true
@@ -191,7 +192,7 @@ namespace PcPowerMonitor
             }
         }
 
-        public TelemetrySnapshot Capture(AppSettings settings, bool paused, bool backgroundMode = false)
+        public TelemetrySnapshot Capture(AppSettings settings, bool paused, bool backgroundMode = false, bool gameMode = false)
         {
             var now = DateTime.Now;
             var snap = new TelemetrySnapshot
@@ -215,7 +216,11 @@ namespace PcPowerMonitor
 
             try
             {
-                _computer.Accept(_visitor);
+                // Durante jogos em segundo plano, atualiza apenas CPU/GPU/RAM (evita polling LPC/SMBus/SuperIO e latencia DPC/USB)
+                if (gameMode)
+                    _computer.Accept(_gameVisitor);
+                else
+                    _computer.Accept(_visitor);
             }
             catch (Exception ex)
             {
@@ -322,9 +327,9 @@ namespace PcPowerMonitor
                 snap.ActiveNetworkName = activeNet.AdapterName;
             }
 
-            // Saúde e vida útil dos SSDs / Discos — 300s (5 min) na bandeja ou 60s com janela aberta (reduz I/O no SSD!)
+            // Saúde e vida útil dos SSDs / Discos — pausado durante jogos; 300s na bandeja ou 60s com janela aberta
             int diskRefreshSec = backgroundMode ? 300 : 60;
-            if ((DateTime.UtcNow - _lastDiskRefreshUtc).TotalSeconds >= diskRefreshSec || _cachedDisks.Count == 0)
+            if (!gameMode && ((DateTime.UtcNow - _lastDiskRefreshUtc).TotalSeconds >= diskRefreshSec || _cachedDisks.Count == 0))
             {
                 _cachedDisks = CaptureDiskHealth(lhmStorageSensors);
                 _lastDiskRefreshUtc = DateTime.UtcNow;
@@ -1107,6 +1112,38 @@ namespace PcPowerMonitor
             {
                 try
                 {
+                    hardware.Update();
+                    foreach (IHardware subHardware in hardware.SubHardware)
+                    {
+                        subHardware.Accept(this);
+                    }
+                }
+                catch { }
+            }
+
+            public void VisitSensor(ISensor sensor) { }
+            public void VisitParameter(IParameter parameter) { }
+        }
+
+        private class GameModeUpdateVisitor : IVisitor
+        {
+            public void VisitComputer(IComputer computer)
+            {
+                computer.Traverse(this);
+            }
+
+            public void VisitHardware(IHardware hardware)
+            {
+                try
+                {
+                    if (hardware.HardwareType != HardwareType.Cpu &&
+                        hardware.HardwareType != HardwareType.GpuNvidia &&
+                        hardware.HardwareType != HardwareType.GpuAmd &&
+                        hardware.HardwareType != HardwareType.GpuIntel &&
+                        hardware.HardwareType != HardwareType.Memory)
+                    {
+                        return;
+                    }
                     hardware.Update();
                     foreach (IHardware subHardware in hardware.SubHardware)
                     {
