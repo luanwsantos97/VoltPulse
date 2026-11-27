@@ -17,7 +17,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "1.0.4";
+        public const string AppVersion = "1.0.5";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
@@ -845,6 +845,16 @@ namespace PcPowerMonitor
                         ExportCsvDialog();
                         break;
 
+                    case "exportMonthlyCsv":
+                        ExportMonthlyCsvDialog();
+                        break;
+
+                    case "ackReleaseNotes":
+                        _settings.LastSeenVersion = AppVersion;
+                        _storage.SaveSettings(_settings);
+                        PollAndPush(true);
+                        break;
+
                     case "clearHistory":
                         _storage.ClearHistory();
                         PollAndPush(true);
@@ -1152,6 +1162,43 @@ namespace PcPowerMonitor
                     catch (Exception ex)
                     {
                         MessageBox.Show("Erro ao exportar CSV: " + ex.Message, "VoltPulse", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void ExportMonthlyCsvDialog()
+        {
+            _storage.Flush();
+            using (var dlg = new SaveFileDialog())
+            {
+                dlg.Title = "Exportar relatório mensal comparativo (CSV)";
+                dlg.Filter = "Arquivo CSV (*.csv)|*.csv";
+                dlg.FileName = "voltpulse_relatorio_mensal_" + DateTime.Now.ToString("yyyy-MM") + ".csv";
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    try
+                    {
+                        var summary = _storage.GetSummary(_settings.TariffPerKwh);
+                        var sb = new StringBuilder();
+                        sb.AppendLine("Mes;DiasMonitorados;HorasAtivas;MediaWatts;PicoWatts;ConsumoKwh;MediaDiariaKwh;TarifaKwh;CustoEstimado;Moeda;VariacaoVsMesAnteriorPct;Status");
+                        foreach (var m in summary.MonthlyReports)
+                        {
+                            string deltaStr = m.DeltaKwhPercent.HasValue
+                                ? string.Format(CultureInfo.InvariantCulture, "{0:+0.0;-0.0;0.0}%", m.DeltaKwhPercent.Value)
+                                : "--";
+                            sb.AppendFormat(
+                                CultureInfo.InvariantCulture,
+                                "{0};{1};{2:F2};{3:F1};{4:F1};{5:F4};{6:F3};{7:F3};{8:F2};{9};{10};{11}\r\n",
+                                m.MonthKey, m.DaysRecorded, m.ActiveHours, m.AverageWatts, m.PeakWatts,
+                                m.EnergyKwh, m.AvgDailyKwh, m.TariffPerKwh, m.Cost, _settings.CurrencySymbol,
+                                deltaStr, m.IsCurrentMonth ? "Em andamento" : "Fechado");
+                        }
+                        File.WriteAllText(dlg.FileName, sb.ToString(), new UTF8Encoding(true));
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Erro ao exportar relatório mensal: " + ex.Message, "VoltPulse", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }

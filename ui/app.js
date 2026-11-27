@@ -45,7 +45,8 @@
     powerSeries: [],   // { time, wall, gpu, cpu }
     tempSeries: [],    // { time, cpu, gpu }
     maxPoints: 60,
-    hoverCharts: {}
+    hoverCharts: {},
+    releaseNotesChecked: false
   };
 
   const I18N = window.VOLTPULSE_I18N || {};
@@ -305,6 +306,168 @@
     showToast("Aplicando blindagem USB, PCIe e Wi-Fi...");
     sendHost({ action: "optimizeUsbPeripherals" });
   });
+  if ($("btnToolShowReleaseNotes")) {
+    $("btnToolShowReleaseNotes").addEventListener("click", () => {
+      const ver = (state.payload && state.payload.AppVersion) || "1.0.5";
+      openReleaseNotesModal(ver, "", false);
+    });
+  }
+  if ($("btnExportMonthlyCsv")) {
+    $("btnExportMonthlyCsv").addEventListener("click", () => {
+      if (isHost) sendHost({ action: "exportMonthlyCsv" });
+      else showToast("Exportação disponível no aplicativo Windows.");
+    });
+  }
+  ["titlebarVer", "sideVer"].forEach((id) => {
+    const el = $(id);
+    if (el) {
+      el.style.cursor = "pointer";
+      el.title = "Ver novidades desta versão";
+      el.addEventListener("click", () => {
+        const ver = (state.payload && state.payload.AppVersion) || "1.0.5";
+        openReleaseNotesModal(ver, "", false);
+      });
+    }
+  });
+
+  // ==================== NOVIDADES DA VERSÃO (EXIBIDO APÓS ATUALIZAR) ====================
+  const RELEASE_NOTES_CATALOG = {
+    "1.0.5": {
+      titlePt: "🎉 Novidades do VoltPulse v1.0.5",
+      titleEn: "🎉 What's New in VoltPulse v1.0.5",
+      subPt: "Relatório Mensal com reset automático no dia 1º, comparativos mês a mês e histórico de novidades.",
+      subEn: "Automatic 1st-of-month billing reset, month-over-month comparison reports, and in-app release notes.",
+      itemsPt: [
+        "📅 <strong>Reset automático ao virar o mês:</strong> todo dia 1º o contador do mês atual zera automaticamente enquanto o mês encerrado é arquivado em definitivo.",
+        "📊 <strong>Relatório Mensal & Comparativo (Mês a Mês):</strong> novo gráfico de barras de 12 meses + tabela com dias, horas, kWh, custo, variação percentual (▲/▼) vs mês anterior e exportação CSV.",
+        "🎉 <strong>Tela de Novidades após atualizar:</strong> sempre que o VoltPulse for atualizado, um resumo claro do que mudou aparece ao abrir (e pode ser reaberto em <em>Ferramentas → Ver Novidades</em>)."
+      ],
+      itemsEn: [
+        "📅 <strong>Automatic Monthly Reset:</strong> on the 1st of each month, current-month counters cleanly reset to zero while the completed month is permanently archived.",
+        "📊 <strong>Month-over-Month Reports & Chart:</strong> new 12-month comparison bar chart, detailed monthly table with % variation badges, and 1-click Monthly CSV export.",
+        "🎉 <strong>In-App What's New Modal:</strong> automatically shows what changed after every update (also accessible anytime via <em>Tools → What's New</em>)."
+      ]
+    },
+    "1.0.4": {
+      titlePt: "🔒 Novidades do VoltPulse v1.0.4",
+      titleEn: "🔒 What's New in VoltPulse v1.0.4",
+      subPt: "Endurecimento completo de segurança (hardening).",
+      subEn: "Comprehensive security hardening release.",
+      itemsPt: [
+        "🔐 <strong>Auto-Updater com SHA-256:</strong> valida allowlist HTTPS oficial e confere <code>SHA256SUMS.txt</code> antes de executar atualizações.",
+        "🛡️ <strong>Assinatura Authenticode:</strong> valida assinatura digital Win32 nos instaladores de dependências (PawnIO e WebView2).",
+        "🧱 <strong>WebView2 + API Local blindados:</strong> bloqueio de navegação externa, CSP restritivo, proteção anti-DNS Rebinding e contra DLL/PATH Hijacking."
+      ],
+      itemsEn: [
+        "🔐 <strong>SHA-256 Verified Auto-Updater:</strong> enforces HTTPS allowlisting and validates <code>SHA256SUMS.txt</code> before launching updates.",
+        "🛡️ <strong>Authenticode Verification:</strong> validates Win32 digital signatures before running dependency installers.",
+        "🧱 <strong>Locked-Down WebView2 & Hardened Local API:</strong> strict CSP, blocked external navigations, anti-DNS-rebinding, and DLL/PATH hijacking protection."
+      ]
+    },
+    "1.0.3": {
+      titlePt: "🖱️ Novidades do VoltPulse v1.0.3",
+      titleEn: "🖱️ What's New in VoltPulse v1.0.3",
+      subPt: "Blindagem para periféricos sem fio e jogos com latência mínima.",
+      subEn: "Gaming & wireless USB peripheral shielding.",
+      itemsPt: [
+        "🖱️ <strong>Zero interferência USB HID:</strong> sondagem HidSharp desativada + polling leve em Modo Jogo.",
+        "🎯 <strong>Mini Widget 100% click-through em jogos:</strong> nunca rouba foco ou intercepta cliques do mouse.",
+        "🛡️ <strong>Nova ferramenta Blindagem USB & Mouse:</strong> desativa suspensão USB, PCIe ASPM e varredura agressiva de Wi-Fi 2,4 GHz em 1 clique."
+      ],
+      itemsEn: [
+        "🖱️ <strong>Zero USB HID Interference:</strong> disabled HidSharp probing and switched Game Mode to ultra-lightweight polling.",
+        "🎯 <strong>Click-Through HUD in Games:</strong> never steals focus or intercepts clicks while gaming.",
+        "🛡️ <strong>1-Click USB & Wireless Mouse Shield:</strong> disables USB selective suspend, hub power-off, PCIe ASPM, and aggressive 2.4 GHz Wi-Fi scans."
+      ]
+    }
+  };
+
+  let _rnModalPendingAck = false;
+  function openReleaseNotesModal(version, prevVersion, isAuto) {
+    const modal = $("releaseNotesModal");
+    if (!modal) return;
+    const isEn = state.lang === "en-US";
+    const cleanVer = String(version || "1.0.5").replace(/^v/i, "");
+    const entry = RELEASE_NOTES_CATALOG[cleanVer] || {
+      titlePt: `🎉 Novidades do VoltPulse v${cleanVer}`,
+      titleEn: `🎉 What's New in VoltPulse v${cleanVer}`,
+      subPt: "Seu VoltPulse foi atualizado com melhorias de desempenho, estabilidade e segurança.",
+      subEn: "Your VoltPulse was updated with performance, stability, and security improvements.",
+      itemsPt: [
+        "⚡ Melhorias gerais de telemetria, eficiência Eco e estabilidade no Windows.",
+        "📋 Confira o changelog completo clicando em <strong>Ver Release no GitHub ↗</strong>."
+      ],
+      itemsEn: [
+        "⚡ General telemetry, Safe Eco efficiency, and Windows stability improvements.",
+        "📋 Check the full changelog via <strong>View Release on GitHub ↗</strong>."
+      ]
+    };
+
+    _rnModalPendingAck = !!isAuto;
+    if ($("rnVersionBadge")) $("rnVersionBadge").textContent = `v${cleanVer}`;
+    const upTag = $("rnUpgradeTag");
+    if (upTag) {
+      if (prevVersion && prevVersion !== cleanVer) {
+        upTag.textContent = isEn ? `Updated from v${prevVersion}` : `Atualizado de v${prevVersion}`;
+        upTag.classList.remove("hidden");
+      } else {
+        upTag.classList.add("hidden");
+      }
+    }
+    if ($("rnTitle")) $("rnTitle").textContent = isEn ? entry.titleEn : entry.titlePt;
+    if ($("rnSubtitle")) $("rnSubtitle").textContent = isEn ? entry.subEn : entry.subPt;
+    if ($("rnList")) {
+      const items = isEn ? entry.itemsEn : entry.itemsPt;
+      $("rnList").innerHTML = items.map((html) => `<li><span>${html}</span></li>`).join("");
+    }
+    if ($("btnRnAck")) $("btnRnAck").textContent = isEn ? "Got it, continue ✓" : "Entendi, continuar ✓";
+    if ($("btnRnGitHub")) {
+      $("btnRnGitHub").textContent = isEn ? "View Release on GitHub ↗" : "Ver Release no GitHub ↗";
+      $("btnRnGitHub").onclick = () => {
+        sendHost({ action: "openUrl", url: `https://github.com/luanwsantos97/VoltPulse/releases/tag/v${cleanVer}` });
+      };
+    }
+    modal.classList.remove("hidden");
+  }
+
+  function closeReleaseNotesModal(ack) {
+    const modal = $("releaseNotesModal");
+    if (modal) modal.classList.add("hidden");
+    if (ack || _rnModalPendingAck) {
+      _rnModalPendingAck = false;
+      if (state.payload && state.payload.Settings && state.payload.AppVersion) {
+        state.payload.Settings.LastSeenVersion = state.payload.AppVersion;
+      }
+      sendHost({ action: "ackReleaseNotes" });
+    }
+  }
+
+  if ($("btnRnAck")) $("btnRnAck").addEventListener("click", () => closeReleaseNotesModal(true));
+  if ($("btnRnClose")) $("btnRnClose").addEventListener("click", () => closeReleaseNotesModal(true));
+  if ($("releaseNotesModal")) {
+    $("releaseNotesModal").addEventListener("click", (ev) => {
+      if (ev.target === $("releaseNotesModal")) closeReleaseNotesModal(true);
+    });
+  }
+
+  function maybeShowReleaseNotes(payload) {
+    if (state.releaseNotesChecked) return;
+    if (!payload || !payload.AppVersion || !payload.Settings) return;
+    if (!isHost) {
+      const p = new URLSearchParams(window.location.search || "");
+      if (p.get("whatsnew") === "1") {
+        state.releaseNotesChecked = true;
+        openReleaseNotesModal(payload.AppVersion, "1.0.4", true);
+      }
+      return;
+    }
+    state.releaseNotesChecked = true;
+    const lastSeen = String(payload.Settings.LastSeenVersion || "").trim();
+    const curVer = String(payload.AppVersion || "").trim();
+    if (curVer && lastSeen !== curVer) {
+      openReleaseNotesModal(curVer, lastSeen, true);
+    }
+  }
 
   // ==================== MOTOR DA TELA VERIFICAR (DRIVER BOOSTER × VOLTPULSE) ====================
   function buildScanDiagnostics(payload) {
@@ -1109,9 +1272,14 @@
     $("kpiWeekSub").textContent = `${fmtNum(s.WeekKwh, 2)} kWh • Média ${fmtNum(s.WeekAvgDailyKwh, 2)} kWh/dia`;
 
     $("kpiMonthCost").textContent = fmtMoney(s.MonthCost, cur);
-    $("kpiMonthSub").textContent = s.MonthDaysRecorded > 0
+    let monthSub = s.MonthDaysRecorded > 0
       ? `Proj. mês: ${fmtNum(s.ProjectedMonthKwh, 1)} kWh (${fmtMoney(s.ProjectedMonthCost, cur)})`
       : `${fmtNum(s.MonthKwh, 2)} kWh acumulados`;
+    if (s.MonthDeltaKwhPercent !== null && s.MonthDeltaKwhPercent !== undefined) {
+      const sign = s.MonthDeltaKwhPercent > 0 ? "+" : "";
+      monthSub += ` • vs mês ant.: ${sign}${fmtNum(s.MonthDeltaKwhPercent, 1)}%`;
+    }
+    $("kpiMonthSub").textContent = monthSub;
 
     // Gauges
     const cTemp = t.CpuTempC;
@@ -1171,6 +1339,7 @@
     renderScanLive(payload);
     renderTools(payload);
     renderSession(payload);
+    renderMonthlyReport(s, cfg);
     renderHistoryTable(s, cfg);
     renderThermals(payload);
     renderVoltages(payload);
@@ -1187,6 +1356,7 @@
 
     redrawAllCharts();
     hideSplash();
+    maybeShowReleaseNotes(payload);
   }
 
   function renderOverviewPower(t) {
@@ -1203,6 +1373,76 @@
         <td class="num muted">${fmtNum(p.Max, 1)} W</td>
       </tr>
     `).join("");
+  }
+
+  function formatMonthLabel(monthKey, shortForm) {
+    if (!monthKey || monthKey.length < 7) return monthKey || "--";
+    const parts = monthKey.split("-");
+    const y = parts[0];
+    const mIdx = parseInt(parts[1], 10) - 1;
+    const ptShort = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const ptFull = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const enShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const enFull = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const isEn = state.lang === "en-US";
+    const list = isEn ? (shortForm ? enShort : enFull) : (shortForm ? ptShort : ptFull);
+    const name = list[mIdx] || parts[1];
+    return shortForm ? `${name}/${y.slice(-2)}` : `${name} ${y}`;
+  }
+
+  function renderMonthlyReport(s, cfg) {
+    const cur = cfg.CurrencySymbol || "R$";
+    const reports = (s && s.MonthlyReports) || [];
+
+    if ($("monthlyCycleBadge")) {
+      const resetTxt = s.NextMonthResetDate ? formatShortDate(s.NextMonthResetDate) : "01";
+      const daysLeft = s.DaysUntilMonthReset || 1;
+      $("monthlyCycleBadge").textContent = `${formatMonthLabel(s.CurrentMonthKey, false)} • Reset em ${resetTxt} (${daysLeft}d)`;
+    }
+
+    const deltaBadge = $("monthlyDeltaBadge");
+    if (deltaBadge) {
+      if (s.MonthDeltaKwhPercent !== null && s.MonthDeltaKwhPercent !== undefined) {
+        const d = s.MonthDeltaKwhPercent;
+        const sign = d > 0 ? "+" : "";
+        const arrow = d < 0 ? "▼" : (d > 0 ? "▲" : "•");
+        deltaBadge.textContent = `${arrow} ${sign}${fmtNum(d, 1)}% vs mês anterior`;
+        deltaBadge.className = "badge " + (d <= 0 ? "badge-ok" : "badge-warn");
+      } else {
+        deltaBadge.textContent = "1º mês registrado";
+        deltaBadge.className = "badge badge-muted";
+      }
+    }
+
+    const tbody = $("tblMonthlyReports");
+    if (!tbody) return;
+    if (reports.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="muted">Ainda acumulando o primeiro mês...</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = reports.map((m) => {
+      let deltaHtml = '<span class="delta-pill flat">Base</span>';
+      if (m.DeltaKwhPercent !== null && m.DeltaKwhPercent !== undefined) {
+        const d = m.DeltaKwhPercent;
+        const cls = d < -0.5 ? "down" : (d > 0.5 ? "up" : "flat");
+        const arrow = d < -0.5 ? "▼" : (d > 0.5 ? "▲" : "•");
+        const sign = d > 0 ? "+" : "";
+        deltaHtml = `<span class="delta-pill ${cls}">${arrow} ${sign}${fmtNum(d, 1)}%</span>`;
+      }
+      const curTag = m.IsCurrentMonth ? '<span class="month-cur-tag">Atual</span>' : "";
+      return `
+        <tr>
+          <td><strong>${esc(formatMonthLabel(m.MonthKey, false))}</strong>${curTag}</td>
+          <td>${m.DaysRecorded}d</td>
+          <td>${fmtHours(m.ActiveHours)}</td>
+          <td class="num">${fmtNum(m.AverageWatts, 0)}W <span class="muted">/ ${fmtNum(m.PeakWatts, 0)}W</span></td>
+          <td class="num cyan"><strong>${fmtNum(m.EnergyKwh, 2)} kWh</strong></td>
+          <td class="num green"><strong>${fmtMoney(m.Cost, cur)}</strong></td>
+          <td class="num">${deltaHtml}</td>
+        </tr>
+      `;
+    }).join("");
   }
 
   function renderHistoryTable(s, cfg) {
@@ -2159,6 +2399,71 @@
     state.hoverCharts[canvasId] = { type: "bar", bars: barsMeta };
   }
 
+  function drawMonthlyBarChart(canvasId, reportsDesc, cfg) {
+    const canvas = $(canvasId);
+    const p = prepCanvas(canvas);
+    if (!p) return;
+    const { ctx, w, h } = p;
+    const col = themeColors();
+    const cur = (cfg && cfg.CurrencySymbol) || "R$";
+
+    const list = (reportsDesc || []).slice(0, 12).reverse(); // ordem cronologica ate 12 meses
+    const pad = { left: 16, right: 16, top: 24, bottom: 26 };
+    const pw = w - pad.left - pad.right;
+    const ph = h - pad.top - pad.bottom;
+
+    if (list.length === 0) {
+      ctx.font = "12px 'Segoe UI', sans-serif";
+      ctx.fillStyle = col.axis;
+      ctx.textAlign = "center";
+      ctx.fillText("Sem dados mensais ainda", w / 2, h / 2);
+      return;
+    }
+
+    const maxKwh = Math.max(1.0, ...list.map((m) => m.EnergyKwh || 0)) * 1.25;
+    const slotW = pw / list.length;
+    const barW = Math.max(18, Math.min(54, slotW * 0.52));
+
+    ctx.strokeStyle = col.grid;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, pad.top + ph);
+    ctx.lineTo(w - pad.right, pad.top + ph);
+    ctx.stroke();
+
+    const barsMeta = [];
+    list.forEach((m, i) => {
+      const cx = pad.left + slotW * i + slotW / 2;
+      const bh = ((m.EnergyKwh || 0) / maxKwh) * ph;
+      const drawH = (m.EnergyKwh || 0) > 0 ? Math.max(5, bh) : 2;
+      const bx = cx - barW / 2;
+      const by = pad.top + ph - drawH;
+
+      const grad = ctx.createLinearGradient(0, by, 0, pad.top + ph);
+      if (m.IsCurrentMonth) {
+        grad.addColorStop(0, col.green);
+        grad.addColorStop(1, "#10b98166");
+      } else {
+        grad.addColorStop(0, col.purple);
+        grad.addColorStop(1, "#38bdf866");
+      }
+      ctx.fillStyle = grad;
+      roundRectTop(ctx, bx, by, barW, drawH, 6);
+      ctx.fill();
+
+      ctx.font = "10.5px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = m.IsCurrentMonth ? col.green : col.axis;
+      ctx.fillText(`${fmtNum(m.EnergyKwh, 1)} kWh`, cx, Math.max(12, by - 7));
+
+      ctx.fillStyle = col.axis;
+      ctx.fillText(formatMonthLabel(m.MonthKey, true), cx, pad.top + ph + 15);
+
+      barsMeta.push({ x1: bx - 6, x2: bx + barW + 6, month: m, cur });
+    });
+
+    state.hoverCharts[canvasId] = { type: "monthly", bars: barsMeta };
+  }
+
   function roundRectTop(ctx, x, y, w, h, r) {
     const rad = Math.min(r, w / 2, h);
     ctx.beginPath();
@@ -2221,6 +2526,24 @@
           <div>Média / Pico: <strong>${fmtNum(d.AverageWatts, 0)}W / ${fmtNum(d.PeakWatts, 0)}W</strong></div>
         `;
         positionTooltip(tip, ev.clientX, ev.clientY);
+      } else if (meta.type === "monthly") {
+        const hit = meta.bars.find((b) => mx >= b.x1 && mx <= b.x2);
+        if (!hit) {
+          tip.classList.add("hidden");
+          return;
+        }
+        const m = hit.month;
+        const deltaTxt = (m.DeltaKwhPercent !== null && m.DeltaKwhPercent !== undefined)
+          ? `<div>vs Mês Anterior: <strong>${m.DeltaKwhPercent > 0 ? "+" : ""}${fmtNum(m.DeltaKwhPercent, 1)}%</strong></div>`
+          : "";
+        tip.innerHTML = `
+          <div style="color:#94a3b8;margin-bottom:3px"><strong>${esc(formatMonthLabel(m.MonthKey, false))}</strong>${m.IsCurrentMonth ? " (Atual)" : ""}</div>
+          <div>Consumo: <strong style="color:#38bdf8">${fmtNum(m.EnergyKwh, 2)} kWh</strong> (${m.DaysRecorded}d)</div>
+          <div>Custo: <strong style="color:#34d399">${fmtMoney(m.Cost, hit.cur)}</strong></div>
+          <div>Média / Pico: <strong>${fmtNum(m.AverageWatts, 0)}W / ${fmtNum(m.PeakWatts, 0)}W</strong></div>
+          ${deltaTxt}
+        `;
+        positionTooltip(tip, ev.clientX, ev.clientY);
       }
     });
 
@@ -2255,10 +2578,11 @@
       drawBarChart("chartOverviewBars", days14.slice(-7), state.payload.Settings);
       drawBarChart("chartEnergy14Days", days14, state.payload.Settings);
       drawHourlyChart("chartHourlyToday", state.payload.Summary.HourlyWhToday, state.payload.Settings);
+      drawMonthlyBarChart("chartEnergyMonthly", state.payload.Summary.MonthlyReports, state.payload.Settings);
     }
   }
 
-  ["chartLivePower", "chartLiveTemps", "chartOverviewBars", "chartEnergy14Days", "chartHourlyToday"].forEach(attachChartHover);
+  ["chartLivePower", "chartLiveTemps", "chartOverviewBars", "chartEnergy14Days", "chartHourlyToday", "chartEnergyMonthly"].forEach(attachChartHover);
   let resizeRaf = 0;
   window.addEventListener("resize", () => {
     if (window.innerWidth < 300 || window.innerHeight < 200) return;
@@ -2341,7 +2665,7 @@
 
       const demo = {
         Type: "telemetry",
-        AppVersion: "1.0.4",
+        AppVersion: "1.0.5",
         AppMemoryMb: 46.8,
         DataDirectory: "C:\\Users\\Demo\\AppData\\Local\\PcPowerMonitor",
         Settings: {
@@ -2494,6 +2818,19 @@
           ProjectedMonthKwh: 31.8,
           ProjectedMonthCost: 31.8 * (demoLang === "en-US" ? 0.17 : 0.89),
           MonthDaysRecorded: 21,
+          CurrentMonthKey: "2026-11",
+          NextMonthResetDate: "2026-12-01",
+          DaysUntilMonthReset: 4,
+          PreviousMonthKwh: 26.4,
+          PreviousMonthCost: 26.4 * (demoLang === "en-US" ? 0.17 : 0.89),
+          MonthDeltaKwhPercent: -13.6,
+          MonthDeltaCost: -3.6 * (demoLang === "en-US" ? 0.17 : 0.89),
+          MonthlyReports: [
+            { MonthKey: "2026-11", EnergyKwh: 22.8, Cost: 22.8 * (demoLang === "en-US" ? 0.17 : 0.89), TariffPerKwh: demoLang === "en-US" ? 0.17 : 0.89, ActiveHours: 148, DaysRecorded: 27, AverageWatts: 142, PeakWatts: 256, AvgDailyKwh: 0.84, IsCurrentMonth: true, DeltaKwhPercent: -13.6 },
+            { MonthKey: "2026-10", EnergyKwh: 26.4, Cost: 26.4 * (demoLang === "en-US" ? 0.17 : 0.89), TariffPerKwh: demoLang === "en-US" ? 0.17 : 0.89, ActiveHours: 172, DaysRecorded: 31, AverageWatts: 154, PeakWatts: 274, AvgDailyKwh: 0.85, IsCurrentMonth: false, DeltaKwhPercent: -7.0 },
+            { MonthKey: "2026-09", EnergyKwh: 28.4, Cost: 28.4 * (demoLang === "en-US" ? 0.17 : 0.89), TariffPerKwh: demoLang === "en-US" ? 0.17 : 0.89, ActiveHours: 184, DaysRecorded: 30, AverageWatts: 158, PeakWatts: 281, AvgDailyKwh: 0.95, IsCurrentMonth: false, DeltaKwhPercent: 5.2 },
+            { MonthKey: "2026-08", EnergyKwh: 27.0, Cost: 27.0 * (demoLang === "en-US" ? 0.17 : 0.89), TariffPerKwh: demoLang === "en-US" ? 0.17 : 0.89, ActiveHours: 176, DaysRecorded: 29, AverageWatts: 153, PeakWatts: 269, AvgDailyKwh: 0.93, IsCurrentMonth: false, DeltaKwhPercent: null }
+          ],
           Last14Days: demoDays,
           AllDays: [...demoDays].reverse()
         }

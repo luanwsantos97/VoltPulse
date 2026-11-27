@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #ifndef AppVersion
-  #define AppVersion "1.0.4"
+  #define AppVersion "1.0.5"
 #endif
 
 #ifndef DistDir

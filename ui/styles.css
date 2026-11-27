@@ -2229,3 +2229,106 @@ input[type="range"] {
   .scan-res-hero { flex-direction: column; align-items: flex-start; }
   .scan-res-actions { flex-direction: row; width: 100%; }
 }
+
+/* ==================== MONTHLY REPORT & RELEASE NOTES MODAL ==================== */
+.delta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.delta-pill.down { background: rgba(52, 211, 153, 0.14); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.32); }
+.delta-pill.up   { background: rgba(248, 113, 113, 0.14); color: var(--red); border: 1px solid rgba(248, 113, 113, 0.32); }
+.delta-pill.flat { background: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.24); }
+
+.month-cur-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.16);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  vertical-align: middle;
+}
+
+.release-modal-card {
+  width: min(560px, 92vw);
+  max-height: 84vh;
+  overflow-y: auto;
+  padding: 22px 24px;
+  border: 1px solid rgba(56, 189, 248, 0.34);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+.rn-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.rn-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rn-upgrade-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--cyan);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.rn-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.rn-close-btn:hover { background: rgba(148, 163, 184, 0.14); color: var(--text); }
+
+.rn-sub {
+  margin-top: 4px;
+  margin-bottom: 14px;
+  font-size: 12.8px;
+  color: var(--text-muted);
+}
+
+.rn-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.rn-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.06);
+  border: 1px solid var(--border);
+  font-size: 12.6px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.rn-list li strong { color: var(--cyan); }
+.rn-actions { justify-content: space-between; align-items: center; }
+

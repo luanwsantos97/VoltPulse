@@ -597,6 +597,42 @@
           </div>
         </div>
 
+        <!-- Relatório Mensal & Comparativo (Reset automático no dia 1) -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">📅 Relatório Mensal &amp; Comparativo (Mês a Mês)</div>
+              <div class="card-sub">O contador do mês atual reinicia automaticamente no dia 1º — os meses encerrados ficam salvos aqui para comparação</div>
+            </div>
+            <div class="btn-group">
+              <span class="badge badge-info" id="monthlyCycleBadge">Ciclo atual</span>
+              <span class="badge badge-muted" id="monthlyDeltaBadge">1º mês</span>
+              <button class="btn btn-ghost btn-sm" id="btnExportMonthlyCsv">📊 Exportar Mensal (CSV)</button>
+            </div>
+          </div>
+
+          <div class="canvas-box md" style="margin-bottom:14px">
+            <canvas id="chartEnergyMonthly"></canvas>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th>Dias</th>
+                  <th>Horas Ligado</th>
+                  <th class="num">Média / Pico</th>
+                  <th class="num">Consumo (kWh)</th>
+                  <th class="num">Custo</th>
+                  <th class="num">vs Mês Anterior</th>
+                </tr>
+              </thead>
+              <tbody id="tblMonthlyReports"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header">
             <div>
@@ -1043,6 +1079,7 @@
               <p>Confira privilégios de Administrador, driver assinado PawnIO e busque novas versões oficiais no GitHub.</p>
               <div class="btn-group">
                 <button type="button" class="btn btn-primary btn-sm" id="btnToolCheckUpd">🔄 Verificar Atualizações</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="btnToolShowReleaseNotes">📋 Ver Novidades</button>
                 <button type="button" class="btn btn-ghost btn-sm" id="btnToolInstallDeps">Verificar PawnIO</button>
               </div>
             </div>
@@ -1270,6 +1307,26 @@
       <div class="modal-actions">
         <button class="btn btn-ghost" id="modalCancel">Cancelar</button>
         <button class="btn btn-danger" id="modalConfirm">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE NOVIDADES DA VERSÃO (Exibido automaticamente após cada atualização) -->
+  <div id="releaseNotesModal" class="modal-backdrop hidden">
+    <div class="modal-card release-modal-card">
+      <div class="rn-header">
+        <div class="rn-badge-row">
+          <span class="badge badge-ok" id="rnVersionBadge">v1.0.5</span>
+          <span class="rn-upgrade-tag hidden" id="rnUpgradeTag">Atualizado</span>
+        </div>
+        <button type="button" class="rn-close-btn" id="btnRnClose" title="Fechar">✕</button>
+      </div>
+      <h3 id="rnTitle">🎉 Novidades do VoltPulse</h3>
+      <p class="rn-sub" id="rnSubtitle">Confira o que há de novo nesta atualização:</p>
+      <ul class="rn-list" id="rnList"></ul>
+      <div class="modal-actions rn-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="btnRnGitHub">Ver Release no GitHub ↗</button>
+        <button type="button" class="btn btn-primary" id="btnRnAck">Entendi, continuar ✓</button>
       </div>
     </div>
   </div>

@@ -57,6 +57,9 @@ namespace PcPowerMonitor
         public bool CustomPcieAspmEco { get; set; }
         public int CustomGpuPowerPercent { get; set; }
 
+        // Release notes modal tracking (exibe novidades automaticamente apos cada atualizacao)
+        public string LastSeenVersion { get; set; }
+
         public AppSettings()
         {
             ApplySystemLocaleDefaults();
@@ -88,6 +91,7 @@ namespace PcPowerMonitor
             TuningProfile = "stock";
             AutoEcoOutsideGames = false;
             RestoreStockOnExit = true;
+            LastSeenVersion = "";
             UltraLowBackgroundMode = true;
             AutoIdleEco = false;
             AutoIdleMinutes = 10;
@@ -418,6 +422,22 @@ namespace PcPowerMonitor
         public double AverageWatts { get { return ActiveSeconds > 0 ? (EnergyWh * 3600.0) / ActiveSeconds : 0.0; } }
     }
 
+    public class MonthlyEnergyReport
+    {
+        public string MonthKey { get; set; } // yyyy-MM
+        public double EnergyKwh { get; set; }
+        public double Cost { get; set; }
+        public double TariffPerKwh { get; set; }
+        public double ActiveHours { get; set; }
+        public int DaysRecorded { get; set; }
+        public double AverageWatts { get; set; }
+        public double PeakWatts { get; set; }
+        public double AvgDailyKwh { get; set; }
+        public bool IsCurrentMonth { get; set; }
+        public double? DeltaKwhPercent { get; set; }
+        public double? DeltaCost { get; set; }
+    }
+
     public class EnergySummary
     {
         public double TodayKwh { get; set; }
@@ -437,15 +457,25 @@ namespace PcPowerMonitor
         public double ProjectedMonthCost { get; set; }
         public int MonthDaysRecorded { get; set; }
 
+        public string CurrentMonthKey { get; set; }
+        public string NextMonthResetDate { get; set; }
+        public int DaysUntilMonthReset { get; set; }
+        public double? PreviousMonthKwh { get; set; }
+        public double? PreviousMonthCost { get; set; }
+        public double? MonthDeltaKwhPercent { get; set; }
+        public double? MonthDeltaCost { get; set; }
+
         public double[] HourlyWhToday { get; set; }
         public List<DailyEnergyRecord> Last14Days { get; set; }
         public List<DailyEnergyRecord> AllDays { get; set; }
+        public List<MonthlyEnergyReport> MonthlyReports { get; set; }
 
         public EnergySummary()
         {
             HourlyWhToday = new double[24];
             Last14Days = new List<DailyEnergyRecord>();
             AllDays = new List<DailyEnergyRecord>();
+            MonthlyReports = new List<MonthlyEnergyReport>();
         }
     }
 

@@ -16,11 +16,14 @@ namespace PcPowerMonitor
         private readonly string _settingsPath;
         private readonly string _historyPath;
         private readonly string _hourlyPath;
+        private readonly string _monthlyPath;
         private readonly Dictionary<string, DailyEnergyRecord> _records = new Dictionary<string, DailyEnergyRecord>();
+        private readonly Dictionary<string, MonthlyEnergyReport> _archivedMonths = new Dictionary<string, MonthlyEnergyReport>(StringComparer.Ordinal);
         private readonly object _lock = new object();
 
         private string _hourlyDate = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         private double[] _hourlyWh = new double[24];
+        private bool _monthlyDirty;
 
         // Medidor de sessão / jogo
         private SessionStats _session = new SessionStats();
@@ -40,9 +43,11 @@ namespace PcPowerMonitor
             _settingsPath = Path.Combine(_dataDir, "settings.json");
             _historyPath = Path.Combine(_dataDir, "energy_history.csv");
             _hourlyPath = Path.Combine(_dataDir, "hourly_today.json");
+            _monthlyPath = Path.Combine(_dataDir, "monthly_reports.json");
 
             LoadHistory();
             LoadHourlyToday();
+            LoadMonthlyReports();
 
             // Garante gravacao segura antes de desligamento, logoff ou suspensao do Windows
             try
@@ -289,6 +294,12 @@ namespace PcPowerMonitor
                         File.Delete(_hourlyPath);
                     File.Move(hTmp, _hourlyPath);
 
+                    if (_monthlyDirty || (_archivedMonths.Count > 0 && !File.Exists(_monthlyPath)))
+                    {
+                        SaveMonthlyReportsLocked(ser);
+                        _monthlyDirty = false;
+                    }
+
                     _dirty = false;
                     _lastFlush = DateTime.UtcNow;
                 }
@@ -312,10 +323,21 @@ namespace PcPowerMonitor
             var summary = new EnergySummary();
             DateTime today = DateTime.Today;
             string todayKey = today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-            string monthPrefix = today.ToString("yyyy-MM-", CultureInfo.InvariantCulture);
+            string currentMonthKey = today.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+            string monthPrefix = currentMonthKey + "-";
+
+            DateTime nextMonthStart = new DateTime(today.Year, today.Month, 1).AddMonths(1);
+            summary.CurrentMonthKey = currentMonthKey;
+            summary.NextMonthResetDate = nextMonthStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            summary.DaysUntilMonthReset = Math.Max(1, (int)(nextMonthStart - today).TotalDays);
+
+            bool shouldFlushArchive = false;
 
             lock (_lock)
             {
+                // Arquiva automaticamente qualquer mes fechado (anterior ao mes atual) mantendo relatorios permanentes!
+                shouldFlushArchive = ArchiveCompletedMonthsLocked(currentMonthKey, tariffPerKwh);
+
                 if (_hourlyDate == todayKey)
                 {
                     Array.Copy(_hourlyWh, summary.HourlyWhToday, 24);
@@ -363,12 +385,19 @@ namespace PcPowerMonitor
                     ? summary.WeekKwh / summary.WeekDaysRecorded
                     : 0.0;
 
-                foreach (var rec in _records.Values.Where(r => r.Date.StartsWith(monthPrefix)))
+                // Ciclo do mes atual (zera automaticamente no dia 1 de cada mes!)
+                double curMonthWh = 0;
+                double curMonthSec = 0;
+                double curMonthPeak = 0;
+                foreach (var rec in _records.Values.Where(r => r.Date != null && r.Date.StartsWith(monthPrefix, StringComparison.Ordinal)))
                 {
-                    summary.MonthKwh += rec.EnergyKwh;
+                    curMonthWh += rec.EnergyWh;
+                    curMonthSec += rec.ActiveSeconds;
+                    if (rec.PeakWatts > curMonthPeak) curMonthPeak = rec.PeakWatts;
                     if (rec.ActiveSeconds > 0) summary.MonthDaysRecorded++;
                 }
 
+                summary.MonthKwh = curMonthWh / 1000.0;
                 summary.MonthCost = summary.MonthKwh * tariffPerKwh;
 
                 int daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
@@ -377,6 +406,53 @@ namespace PcPowerMonitor
                     double avgDailyMonth = summary.MonthKwh / summary.MonthDaysRecorded;
                     summary.ProjectedMonthKwh = avgDailyMonth * daysInMonth;
                     summary.ProjectedMonthCost = summary.ProjectedMonthKwh * tariffPerKwh;
+                }
+
+                // Monta relatorio mensal consolidado (meses fechados arquivados + mes atual ao vivo)
+                var combinedMonths = new SortedDictionary<string, MonthlyEnergyReport>(StringComparer.Ordinal);
+                foreach (var kv in _archivedMonths)
+                {
+                    if (string.Equals(kv.Key, currentMonthKey, StringComparison.Ordinal)) continue;
+                    combinedMonths[kv.Key] = CloneMonthlyReport(kv.Value, false);
+                }
+
+                combinedMonths[currentMonthKey] = new MonthlyEnergyReport
+                {
+                    MonthKey = currentMonthKey,
+                    EnergyKwh = Math.Round(summary.MonthKwh, 4),
+                    Cost = Math.Round(summary.MonthCost, 2),
+                    TariffPerKwh = tariffPerKwh,
+                    ActiveHours = Math.Round(curMonthSec / 3600.0, 2),
+                    DaysRecorded = summary.MonthDaysRecorded,
+                    AverageWatts = curMonthSec > 0 ? Math.Round((curMonthWh * 3600.0) / curMonthSec, 1) : 0.0,
+                    PeakWatts = Math.Round(curMonthPeak, 1),
+                    AvgDailyKwh = summary.MonthDaysRecorded > 0 ? Math.Round(summary.MonthKwh / summary.MonthDaysRecorded, 3) : 0.0,
+                    IsCurrentMonth = true
+                };
+
+                // Calcula comparativos mes a mes em ordem cronologica
+                MonthlyEnergyReport prev = null;
+                foreach (var rep in combinedMonths.Values)
+                {
+                    if (prev != null && prev.EnergyKwh > 0.001)
+                    {
+                        rep.DeltaKwhPercent = Math.Round(((rep.EnergyKwh - prev.EnergyKwh) / prev.EnergyKwh) * 100.0, 1);
+                        rep.DeltaCost = Math.Round(rep.Cost - prev.Cost, 2);
+                    }
+                    prev = rep;
+                }
+
+                var orderedDesc = combinedMonths.Values.OrderByDescending(m => m.MonthKey).ToList();
+                summary.MonthlyReports = orderedDesc;
+
+                if (orderedDesc.Count >= 2)
+                {
+                    var curRep = orderedDesc[0];
+                    var prevRep = orderedDesc[1];
+                    summary.PreviousMonthKwh = prevRep.EnergyKwh;
+                    summary.PreviousMonthCost = prevRep.Cost;
+                    summary.MonthDeltaKwhPercent = curRep.DeltaKwhPercent;
+                    summary.MonthDeltaCost = curRep.DeltaCost;
                 }
 
                 summary.AllDays = _records.Values
@@ -392,7 +468,114 @@ namespace PcPowerMonitor
                     .ToList();
             }
 
+            if (shouldFlushArchive)
+            {
+                try
+                {
+                    lock (_lock)
+                    {
+                        SaveMonthlyReportsLocked(new JavaScriptSerializer());
+                        _monthlyDirty = false;
+                    }
+                }
+                catch { }
+            }
+
             return summary;
+        }
+
+        private bool ArchiveCompletedMonthsLocked(string currentMonthKey, double tariffPerKwh)
+        {
+            bool changed = false;
+            var pastGroups = _records.Values
+                .Where(r => !string.IsNullOrEmpty(r.Date) && r.Date.Length >= 7)
+                .GroupBy(r => r.Date.Substring(0, 7))
+                .Where(g => string.Compare(g.Key, currentMonthKey, StringComparison.Ordinal) < 0);
+
+            foreach (var g in pastGroups)
+            {
+                double totalWh = 0;
+                double totalSec = 0;
+                double peakW = 0;
+                int days = 0;
+                foreach (var r in g)
+                {
+                    totalWh += r.EnergyWh;
+                    totalSec += r.ActiveSeconds;
+                    if (r.PeakWatts > peakW) peakW = r.PeakWatts;
+                    if (r.ActiveSeconds > 0) days++;
+                }
+
+                double kwh = Math.Round(totalWh / 1000.0, 4);
+                MonthlyEnergyReport existing;
+                if (!_archivedMonths.TryGetValue(g.Key, out existing) || Math.Abs(existing.EnergyKwh - kwh) > 0.005)
+                {
+                    double effTariff = (existing != null && existing.TariffPerKwh > 0.001) ? existing.TariffPerKwh : tariffPerKwh;
+                    _archivedMonths[g.Key] = new MonthlyEnergyReport
+                    {
+                        MonthKey = g.Key,
+                        EnergyKwh = kwh,
+                        TariffPerKwh = effTariff,
+                        Cost = Math.Round(kwh * effTariff, 2),
+                        ActiveHours = Math.Round(totalSec / 3600.0, 2),
+                        DaysRecorded = days,
+                        AverageWatts = totalSec > 0 ? Math.Round((totalWh * 3600.0) / totalSec, 1) : 0.0,
+                        PeakWatts = Math.Round(peakW, 1),
+                        AvgDailyKwh = days > 0 ? Math.Round(kwh / days, 3) : 0.0,
+                        IsCurrentMonth = false
+                    };
+                    _monthlyDirty = true;
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+
+        private static MonthlyEnergyReport CloneMonthlyReport(MonthlyEnergyReport src, bool isCurrent)
+        {
+            return new MonthlyEnergyReport
+            {
+                MonthKey = src.MonthKey,
+                EnergyKwh = src.EnergyKwh,
+                Cost = src.Cost,
+                TariffPerKwh = src.TariffPerKwh,
+                ActiveHours = src.ActiveHours,
+                DaysRecorded = src.DaysRecorded,
+                AverageWatts = src.AverageWatts,
+                PeakWatts = src.PeakWatts,
+                AvgDailyKwh = src.AvgDailyKwh,
+                IsCurrentMonth = isCurrent
+            };
+        }
+
+        private void SaveMonthlyReportsLocked(JavaScriptSerializer ser)
+        {
+            var list = _archivedMonths.Values.OrderByDescending(m => m.MonthKey).ToList();
+            string mTmp = _monthlyPath + ".tmp";
+            File.WriteAllText(mTmp, ser.Serialize(list), Encoding.UTF8);
+            if (File.Exists(_monthlyPath))
+                File.Delete(_monthlyPath);
+            File.Move(mTmp, _monthlyPath);
+        }
+
+        private void LoadMonthlyReports()
+        {
+            if (!File.Exists(_monthlyPath)) return;
+            try
+            {
+                string json = File.ReadAllText(_monthlyPath, Encoding.UTF8);
+                var ser = new JavaScriptSerializer();
+                var list = ser.Deserialize<List<MonthlyEnergyReport>>(json);
+                if (list != null)
+                {
+                    foreach (var m in list)
+                    {
+                        if (m != null && !string.IsNullOrWhiteSpace(m.MonthKey))
+                            _archivedMonths[m.MonthKey] = m;
+                    }
+                }
+            }
+            catch { }
         }
 
         private void LoadHistory()

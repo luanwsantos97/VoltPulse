@@ -3,6 +3,17 @@
 All notable changes to **VoltPulse** are documented in this file.
 Versioning follows clean sequential releases (`v1.0.0`, `v1.0.1`, `v1.0.2`, ...).
 
+## [1.0.5] — 2026-11-27
+
+### Added
+- **Automatic Monthly Billing Reset & Month-over-Month Reports (`EnergyStorage` & Energy View)**:
+  - The current-month energy and cost counters automatically reset to zero on the 1st of every calendar month while permanently archiving completed months into `monthly_reports.json` (preserving each closed month's effective tariff, total kWh, cost, hours active, average/peak watts, and daily average).
+  - New **📅 Relatório Mensal & Comparativo (Mês a Mês)** section in **Energia & Custos** with an interactive 12-month bar chart, month-over-month variation badges (`▲`/`▼ %`), automatic reset countdown, and 1-click **Exportar Mensal (CSV)**.
+  - Dashboard **MÊS ATUAL** card now displays live comparison vs. the previous month when available.
+- **Automatic "What's New" Release Notes Modal (`LastSeenVersion`)**:
+  - Automatically displays a clean, localized **"🎉 Novidades da Versão"** summary modal the first time you open VoltPulse after any update so you immediately see what changed.
+  - Reopenable anytime from **Ferramentas → 📋 Ver Novidades** or by clicking the version badge in the sidebar/titlebar.
+
 ## [1.0.4] — 2026-11-27
 
 ### Security Hardening

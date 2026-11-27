@@ -145,15 +145,15 @@ cd VoltPulse
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 # 3. Build + generate Release ZIP & Installer -> releases/
-powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.4"
+powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.5"
 ```
 
 ### Automated Releases (GitHub Actions)
 This repository includes [`.github/workflows/release.yml`](.github/workflows/release.yml). Pushing any `v*` tag automatically compiles the project on `windows-latest` and publishes the release assets:
 
 ```bash
-git tag v1.0.4
-git push origin v1.0.4
+git tag v1.0.5
+git push origin v1.0.5
 ```
 
 ### UI Preview Mode (Browser)
