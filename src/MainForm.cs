@@ -17,7 +17,7 @@ namespace PcPowerMonitor
 {
     public class MainForm : Form
     {
-        public const string AppVersion = "1.0.3";
+        public const string AppVersion = "1.0.4";
 
         private HardwareMonitorService _monitor;
         private bool _monitorInitializing;
@@ -67,38 +67,49 @@ namespace PcPowerMonitor
         private Icon _baseAppIcon;
         private IntPtr _dynamicTrayIconHandle = IntPtr.Zero;
 
-        // Win32 Frameless Drag, Resize, Native DWM Animations, Rounded Corners & Proper Maximize
+        // Win32 Frameless Drag, Resize, Native DWM Animations, Rounded Corners & Proper Maximize (somente System32)
         [DllImport("dwmapi.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
         [DllImport("dwmapi.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS pMarInset);
 
         [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool ReleaseCapture();
 
         [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool IsZoomed(IntPtr hWnd);
 
         [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern int GetSystemMetrics(int nIndex);
 
         [DllImport("user32.dll", SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool DestroyIcon(IntPtr handle);
 
         [DllImport("kernel32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool SetProcessWorkingSetSize(IntPtr proc, IntPtr min, IntPtr max);
 
         [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
 
         [StructLayout(LayoutKind.Sequential)]
@@ -124,6 +135,7 @@ namespace PcPowerMonitor
         }
 
         [DllImport("kernel32.dll", SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool SetProcessInformation(IntPtr hProcess, int processInformationClass, ref PROCESS_POWER_THROTTLING_STATE processInformation, int processInformationSize);
 
         private const int ProcessPowerThrottling = 4;
@@ -545,6 +557,23 @@ namespace PcPowerMonitor
                 core.Settings.AreDevToolsEnabled = false;
                 core.Settings.IsStatusBarEnabled = false;
                 core.Settings.IsZoomControlEnabled = false;
+                core.Settings.AreHostObjectsAllowed = false;
+                core.Settings.IsPasswordAutosaveEnabled = false;
+                core.Settings.IsGeneralAutofillEnabled = false;
+
+                // Hardening WebView2 elevado: bloqueia qualquer navegacao fora de https://voltpulse.local/ e popups externos
+                core.NavigationStarting += (s, e) =>
+                {
+                    if (string.IsNullOrWhiteSpace(e.Uri) ||
+                        !e.Uri.StartsWith("https://voltpulse.local/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        e.Cancel = true;
+                    }
+                };
+                core.NewWindowRequested += (s, e) =>
+                {
+                    e.Handled = true;
+                };
 
                 string exeDir = AppDomain.CurrentDomain.BaseDirectory;
                 string uiDir = Path.Combine(exeDir, "ui");
@@ -655,14 +684,14 @@ namespace PcPowerMonitor
             if (_updateInfo == null || !_updateInfo.UpdateAvailable) return;
             if (!string.IsNullOrWhiteSpace(_updateInfo.DownloadUrl))
             {
-                bool ok = await UpdateChecker.DownloadAndRunInstallerAsync(_updateInfo.DownloadUrl);
+                bool ok = await UpdateChecker.DownloadAndRunInstallerAsync(_updateInfo);
                 if (ok)
                 {
                     ExitApplication();
                     return;
                 }
             }
-            if (!string.IsNullOrWhiteSpace(_updateInfo.ReleasePageUrl))
+            if (!string.IsNullOrWhiteSpace(_updateInfo.ReleasePageUrl) && UpdateChecker.IsAllowedReleaseUrl(_updateInfo.ReleasePageUrl))
             {
                 try { Process.Start(new ProcessStartInfo(_updateInfo.ReleasePageUrl) { UseShellExecute = true }); } catch { }
             }
@@ -804,7 +833,12 @@ namespace PcPowerMonitor
 
                     case "openDataDir":
                         _storage.Flush();
-                        try { Process.Start("explorer.exe", _storage.DataDirectory); } catch { }
+                        try
+                        {
+                            string explorerPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
+                            Process.Start(new ProcessStartInfo(explorerPath, "\"" + _storage.DataDirectory + "\"") { UseShellExecute = false });
+                        }
+                        catch { }
                         break;
 
                     case "exportCsv":
@@ -867,11 +901,13 @@ namespace PcPowerMonitor
                         if (msg.ContainsKey("url"))
                         {
                             string url = Convert.ToString(msg["url"]);
-                            if (!string.IsNullOrEmpty(url) &&
-                                (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-                                 url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)))
+                            Uri parsed;
+                            if (!string.IsNullOrWhiteSpace(url) &&
+                                Uri.TryCreate(url, UriKind.Absolute, out parsed) &&
+                                string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+                                IsAllowedExternalHost(parsed.Host))
                             {
-                                try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+                                try { Process.Start(new ProcessStartInfo(parsed.AbsoluteUri) { UseShellExecute = true }); } catch { }
                             }
                         }
                         break;
@@ -1075,6 +1111,19 @@ namespace PcPowerMonitor
             return Convert.ToString(d[key]).Trim();
         }
 
+        private static bool IsAllowedExternalHost(string host)
+        {
+            if (string.IsNullOrWhiteSpace(host)) return false;
+            string h = host.Trim().ToLowerInvariant();
+            return h == "github.com" ||
+                   h == "www.github.com" ||
+                   h == "pawnio.eu" ||
+                   h == "www.pawnio.eu" ||
+                   h == "developer.microsoft.com" ||
+                   h == "go.microsoft.com" ||
+                   h == "learn.microsoft.com";
+        }
+
         private void ExportCsvDialog()
         {
             _storage.Flush();
@@ -1209,18 +1258,28 @@ namespace PcPowerMonitor
                 AppVersion = AppVersion
             };
 
-            string jsonStr = null;
-            try { jsonStr = _json.Serialize(payload); } catch { }
-
-            if (!string.IsNullOrEmpty(jsonStr))
+            if (uiVisible && _webReady && _webView != null && _webView.CoreWebView2 != null)
             {
-                if (_localApi.IsRunning)
-                    _localApi.UpdatePayloadJson(jsonStr);
-
-                if (uiVisible && _webReady && _webView != null && _webView.CoreWebView2 != null)
+                try
                 {
-                    try { _webView.CoreWebView2.PostWebMessageAsJson(jsonStr); } catch { }
+                    string uiJson = _json.Serialize(payload);
+                    if (!string.IsNullOrEmpty(uiJson))
+                        _webView.CoreWebView2.PostWebMessageAsJson(uiJson);
                 }
+                catch { }
+            }
+
+            // API local sanitizada: nunca expoe caminho de pasta local/usuario do Windows
+            if (_localApi.IsRunning)
+            {
+                try
+                {
+                    payload.DataDirectory = "";
+                    string apiJson = _json.Serialize(payload);
+                    if (!string.IsNullOrEmpty(apiJson))
+                        _localApi.UpdatePayloadJson(apiJson);
+                }
+                catch { }
             }
         }
 

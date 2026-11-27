@@ -1,7 +1,7 @@
 ﻿param(
     [switch]$ReleaseZip,
     [switch]$Installer,
-    [string]$Version = "1.0.3"
+    [string]$Version = "1.0.4"
 )
 
 $ErrorActionPreference = "Stop"
@@ -129,4 +129,23 @@ if ($Installer) {
         throw "Falha ao compilar o instalador Inno Setup (exit code $LASTEXITCODE)"
     }
     Write-Host "Instalador gerado em: $(Join-Path $releaseDir "VoltPulse-Setup-v$Version.exe")"
+}
+
+if ($ReleaseZip -or $Installer) {
+    $sumLines = New-Object System.Collections.Generic.List[string]
+    $candidates = @(
+        (Join-Path $releaseDir "VoltPulse-Setup-v$Version.exe"),
+        (Join-Path $releaseDir "VoltPulse-v$Version-win-x64.zip")
+    )
+    foreach ($f in $candidates) {
+        if (Test-Path $f) {
+            $h = (Get-FileHash -Path $f -Algorithm SHA256).Hash.ToLowerInvariant()
+            $sumLines.Add("$h  $(Split-Path -Leaf $f)")
+        }
+    }
+    if ($sumLines.Count -gt 0) {
+        $sumsPath = Join-Path $releaseDir "SHA256SUMS.txt"
+        [System.IO.File]::WriteAllText($sumsPath, ($sumLines -join "`n") + "`n", [System.Text.UTF8Encoding]::new($false))
+        Write-Host "Checksums SHA-256 gerados em: $sumsPath"
+    }
 }

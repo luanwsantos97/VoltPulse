@@ -3,6 +3,16 @@
 All notable changes to **VoltPulse** are documented in this file.
 Versioning follows clean sequential releases (`v1.0.0`, `v1.0.1`, `v1.0.2`, ...).
 
+## [1.0.4] — 2026-11-27
+
+### Security Hardening
+- **Auto-Updater Integrity & Isolation (`UpdateChecker`)**: enforces strict HTTPS GitHub release URL allowlisting, downloads updates into an isolated random temporary directory, and verifies published **`SHA256SUMS.txt`** hashes before executing the installer.
+- **Authenticode Signature Verification (`DependencyManager` & `VoltPulse.iss`)**: verifies valid Win32 Authenticode digital signatures (`WinVerifyTrust` / `Microsoft` publisher check for WebView2) and uses isolated random temp folders before launching dependency installers.
+- **DLL & PATH Hijacking Protection**: added `[DefaultDllImportSearchPaths(DllImportSearchPath.System32)]` across all System32 Win32/ADL P/Invoke declarations (`atiadlxx.dll`, `user32.dll`, `dwmapi.dll`, `gdi32.dll`, `kernel32.dll`, `advapi32.dll`, `wintrust.dll`) and switched `powercfg.exe`, `powershell.exe`, `schtasks.exe`, `taskkill.exe`, and `explorer.exe` to explicit System32/Windows absolute paths.
+- **Local HTTP API Hardening (`LocalApiServer`)**: removed wildcard `Access-Control-Allow-Origin: *`, added strict `Host` header validation (`127.0.0.1`/`localhost` anti-DNS-rebinding), restricted HTTP methods to `GET`/`HEAD`, added `X-Content-Type-Options: nosniff` + `Cache-Control: no-store`, and stripped local user directory paths (`DataDirectory`) from the API payload.
+- **Elevated WebView2 Lockdown & CSP (`MainForm`, `ui/index.html`)**: blocked all external navigations (`NavigationStarting` restricted to `https://voltpulse.local/`) and popups (`NewWindowRequested`), disabled host objects/autofill, restricted `openUrl` IPC to an HTTPS trusted-host allowlist, and added a strict `Content-Security-Policy` (`script-src 'self'`).
+- **Least-Privilege CI/CD & Checksums (`build.ps1`, `.github/workflows/release.yml`)**: automatic `SHA256SUMS.txt` generation and scoped `contents: read` default permissions with `contents: write` isolated solely to tag release publishing.
+
 ## [1.0.3] — 2026-11-27
 
 ### Fixed & Improved (Gaming & USB Peripheral Shield)

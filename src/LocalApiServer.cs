@@ -8,6 +8,7 @@ namespace PcPowerMonitor
     /// <summary>
     /// Servidor HTTP 100% local (127.0.0.1) opcional para integracao com Home Assistant,
     /// Elgato Stream Deck, Rainmeter, OBS ou scripts locais. Desligado por padrao.
+    /// Hardening: valida Host (anti-DNS Rebinding), remove CORS aberto (*) e restringe a GET/HEAD.
     /// </summary>
     public class LocalApiServer : IDisposable
     {
@@ -50,6 +51,16 @@ namespace PcPowerMonitor
             }
         }
 
+        private bool IsAllowedHost(string hostHeader)
+        {
+            if (string.IsNullOrWhiteSpace(hostHeader)) return false;
+            string h = hostHeader.Trim().ToLowerInvariant();
+            return h == "127.0.0.1" ||
+                   h == "localhost" ||
+                   h == ("127.0.0.1:" + _port) ||
+                   h == ("localhost:" + _port);
+        }
+
         private void ListenLoop()
         {
             while (_running && _listener != null && _listener.IsListening)
@@ -60,28 +71,47 @@ namespace PcPowerMonitor
                     var req = ctx.Request;
                     var res = ctx.Response;
 
-                    res.AddHeader("Access-Control-Allow-Origin", "*");
                     res.ContentType = "application/json; charset=utf-8";
+                    res.AddHeader("X-Content-Type-Options", "nosniff");
+                    res.AddHeader("Cache-Control", "no-store");
 
-                    string path = (req.Url != null ? req.Url.AbsolutePath : "/").ToLowerInvariant();
                     string body;
-                    if (path == "/api/telemetry" || path == "/telemetry" || path == "/")
+                    if (!IsAllowedHost(req.UserHostName))
                     {
-                        body = _latestJson;
+                        res.StatusCode = 403;
+                        body = "{\"error\":\"forbidden_host\"}";
                     }
-                    else if (path == "/api/health")
+                    else if (!string.Equals(req.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase) &&
+                             !string.Equals(req.HttpMethod, "HEAD", StringComparison.OrdinalIgnoreCase))
                     {
-                        body = "{\"status\":\"ok\",\"app\":\"VoltPulse\"}";
+                        res.StatusCode = 405;
+                        res.AddHeader("Allow", "GET, HEAD");
+                        body = "{\"error\":\"method_not_allowed\"}";
                     }
                     else
                     {
-                        res.StatusCode = 404;
-                        body = "{\"error\":\"not_found\",\"endpoints\":[\"/api/telemetry\",\"/api/health\"]}";
+                        string path = (req.Url != null ? req.Url.AbsolutePath : "/").ToLowerInvariant();
+                        if (path == "/api/telemetry" || path == "/telemetry" || path == "/")
+                        {
+                            body = _latestJson;
+                        }
+                        else if (path == "/api/health")
+                        {
+                            body = "{\"status\":\"ok\",\"app\":\"VoltPulse\"}";
+                        }
+                        else
+                        {
+                            res.StatusCode = 404;
+                            body = "{\"error\":\"not_found\",\"endpoints\":[\"/api/telemetry\",\"/api/health\"]}";
+                        }
                     }
 
                     byte[] buf = Encoding.UTF8.GetBytes(body);
                     res.ContentLength64 = buf.Length;
-                    res.OutputStream.Write(buf, 0, buf.Length);
+                    if (!string.Equals(req.HttpMethod, "HEAD", StringComparison.OrdinalIgnoreCase))
+                    {
+                        res.OutputStream.Write(buf, 0, buf.Length);
+                    }
                     res.OutputStream.Close();
                 }
                 catch

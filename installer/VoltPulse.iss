@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #ifndef AppVersion
-  #define AppVersion "1.0.3"
+  #define AppVersion "1.0.4"
 #endif
 
 #ifndef DistDir
@@ -169,19 +169,19 @@ Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{#AppEx
 ; 1. Instala PawnIO silenciosamente caso ainda não esteja instalado
 Filename: "{app}\deps\PawnIO_setup.exe"; Parameters: "-install -silent"; StatusMsg: "{cm:StatusPawnIO}"; Flags: runhidden waituntilterminated skipifdoesntexist; Tasks: installpawnio; Check: NeedsPawnIo
 
-; 2. Baixa e instala Edge WebView2 Runtime caso ainda não esteja instalado
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""$p=Join-Path $env:TEMP 'MicrosoftEdgeWebview2Setup.exe'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $p; Start-Process $p -ArgumentList '/silent /install' -Wait"""; StatusMsg: "{cm:StatusWebView2}"; Flags: runhidden waituntilterminated; Tasks: installwebview2; Check: NeedsWebView2
+; 2. Baixa, valida assinatura Microsoft Authenticode e instala Edge WebView2 Runtime caso ainda não esteja instalado
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""$d=Join-Path $env:TEMP ('VoltPulseWV2_'+[Guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Force -Path $d | Out-Null; try {{ $p=Join-Path $d 'MicrosoftEdgeWebview2Setup.exe'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $p; $sig=Get-AuthenticodeSignature $p; if($sig.Status -eq 'Valid' -and $sig.SignerCertificate.Subject -match 'Microsoft'){{ Start-Process $p -ArgumentList '/silent /install' -WorkingDirectory $d -Wait } } finally {{ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $d }"""; StatusMsg: "{cm:StatusWebView2}"; Flags: runhidden waituntilterminated; Tasks: installwebview2; Check: NeedsWebView2
 
 ; 3. Configura inicialização automática sem UAC (se o usuário marcou a opção)
-Filename: "schtasks.exe"; Parameters: "/Create /TN ""VoltPulsePowerMonitor"" /TR ""\""{app}\{#AppExeName}\"" --minimized"" /SC ONLOGON /RL HIGHEST /F"; StatusMsg: "{cm:StatusStartup}"; Flags: runhidden waituntilterminated; Tasks: autostart
+Filename: "{sys}\schtasks.exe"; Parameters: "/Create /TN ""VoltPulsePowerMonitor"" /TR ""\""{app}\{#AppExeName}\"" --minimized"" /SC ONLOGON /RL HIGHEST /F"; StatusMsg: "{cm:StatusStartup}"; Flags: runhidden waituntilterminated; Tasks: autostart
 
 ; 4. Executar VoltPulse ao concluir a instalação
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchApp}"; Flags: nowait postinstall skipifsilent shellexec
 
 [UninstallRun]
 ; Encerra VoltPulse antes de desinstalar e remove tarefa agendada
-Filename: "taskkill.exe"; Parameters: "/F /IM {#AppExeName}"; Flags: runhidden waituntilterminated; RunOnceId: "KillVoltPulse"
-Filename: "schtasks.exe"; Parameters: "/Delete /TN ""VoltPulsePowerMonitor"" /F"; Flags: runhidden waituntilterminated; RunOnceId: "DeleteStartupTask"
+Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM {#AppExeName}"; Flags: runhidden waituntilterminated; RunOnceId: "KillVoltPulse"
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""VoltPulsePowerMonitor"" /F"; Flags: runhidden waituntilterminated; RunOnceId: "DeleteStartupTask"
 
 [Code]
 function NeedsPawnIo: Boolean;
@@ -206,9 +206,9 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
 begin
-  // Fecha instancias anteriores do VoltPulse / PcPowerMonitor antes de sobrescrever arquivos
-  Exec('taskkill.exe', '/F /IM VoltPulse.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Exec('taskkill.exe', '/F /IM PcPowerMonitor.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // Fecha instancias anteriores do VoltPulse / PcPowerMonitor antes de sobrescrever arquivos (caminho absoluto System32)
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM VoltPulse.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM PcPowerMonitor.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(400);
   Result := '';
 end;

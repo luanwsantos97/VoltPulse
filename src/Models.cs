@@ -263,6 +263,8 @@ namespace PcPowerMonitor
         public bool UpdateAvailable { get; set; }
         public string LatestVersion { get; set; }
         public string DownloadUrl { get; set; }
+        public string AssetFileName { get; set; }
+        public string Sha256SumsUrl { get; set; }
         public string ReleasePageUrl { get; set; }
     }
 

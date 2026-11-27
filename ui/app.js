@@ -2341,7 +2341,7 @@
 
       const demo = {
         Type: "telemetry",
-        AppVersion: "1.0.3",
+        AppVersion: "1.0.4",
         AppMemoryMb: 46.8,
         DataDirectory: "C:\\Users\\Demo\\AppData\\Local\\PcPowerMonitor",
         Settings: {

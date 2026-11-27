@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -14,6 +15,102 @@ namespace PcPowerMonitor
     {
         private const string PawnIoDownloadUrl = "https://github.com/namazso/PawnIO.Setup/releases/latest/download/PawnIO_setup.exe";
         private const string WebView2DownloadUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+
+        // WinVerifyTrust (Authenticode) — somente System32
+        private static readonly Guid WINTRUST_ACTION_GENERIC_VERIFY_V2 = new Guid("{00AAC56B-CD44-11d0-8CC2-00C04FC295EE}");
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct WINTRUST_FILE_INFO
+        {
+            public uint cbStruct;
+            public string pcwszFilePath;
+            public IntPtr hFile;
+            public IntPtr pgKnownSubject;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct WINTRUST_DATA
+        {
+            public uint cbStruct;
+            public IntPtr pPolicyCallbackData;
+            public IntPtr pSIPClientData;
+            public uint dwUIChoice;
+            public uint fdwRevocationChecks;
+            public uint dwUnionChoice;
+            public IntPtr pFile;
+            public uint dwStateAction;
+            public IntPtr hWVTStateData;
+            public string pwszURLReference;
+            public uint dwProvFlags;
+            public uint dwUIContext;
+            public IntPtr pSignatureSettings;
+        }
+
+        [DllImport("wintrust.dll", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+        private static extern uint WinVerifyTrust(IntPtr hwnd, [MarshalAs(UnmanagedType.LPStruct)] Guid pgActionID, ref WINTRUST_DATA pWVTData);
+
+        public static bool VerifyAuthenticodeSignature(string filePath, string requiredSubjectSubstring = null)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath)) return false;
+
+            IntPtr fileInfoPtr = IntPtr.Zero;
+            try
+            {
+                var fileInfo = new WINTRUST_FILE_INFO
+                {
+                    cbStruct = (uint)Marshal.SizeOf(typeof(WINTRUST_FILE_INFO)),
+                    pcwszFilePath = filePath,
+                    hFile = IntPtr.Zero,
+                    pgKnownSubject = IntPtr.Zero
+                };
+
+                fileInfoPtr = Marshal.AllocCoTaskMem(Marshal.SizeOf(typeof(WINTRUST_FILE_INFO)));
+                Marshal.StructureToPtr(fileInfo, fileInfoPtr, false);
+
+                var data = new WINTRUST_DATA
+                {
+                    cbStruct = (uint)Marshal.SizeOf(typeof(WINTRUST_DATA)),
+                    dwUIChoice = 2,          // WTD_UI_NONE
+                    fdwRevocationChecks = 0, // WTD_REVOKE_NONE
+                    dwUnionChoice = 1,       // WTD_CHOICE_FILE
+                    pFile = fileInfoPtr,
+                    dwStateAction = 1,       // WTD_STATEACTION_VERIFY
+                    dwProvFlags = 0x00000010 // WTD_REVOCATION_CHECK_NONE
+                };
+
+                uint status = WinVerifyTrust(IntPtr.Zero, WINTRUST_ACTION_GENERIC_VERIFY_V2, ref data);
+
+                // Fecha handle de estado do WinVerifyTrust
+                data.dwStateAction = 2; // WTD_STATEACTION_CLOSE
+                WinVerifyTrust(IntPtr.Zero, WINTRUST_ACTION_GENERIC_VERIFY_V2, ref data);
+
+                if (status != 0) return false;
+
+                if (!string.IsNullOrEmpty(requiredSubjectSubstring))
+                {
+                    using (var cert = X509Certificate.CreateFromSignedFile(filePath))
+                    {
+                        string subject = cert != null ? (cert.Subject ?? "") : "";
+                        if (subject.IndexOf(requiredSubjectSubstring, StringComparison.OrdinalIgnoreCase) < 0)
+                            return false;
+                    }
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                if (fileInfoPtr != IntPtr.Zero)
+                {
+                    try { Marshal.DestroyStructure(fileInfoPtr, typeof(WINTRUST_FILE_INFO)); } catch { }
+                    Marshal.FreeCoTaskMem(fileInfoPtr);
+                }
+            }
+        }
 
         public static bool IsPawnIoInstalled()
         {
@@ -79,6 +176,7 @@ namespace PcPowerMonitor
             private readonly Button _btnSkip;
 
             [DllImport("dwmapi.dll")]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
             public DependencySetupForm(bool needWebView2, bool needPawnIo)
@@ -122,7 +220,7 @@ namespace PcPowerMonitor
                 {
                     Text = "Detectamos que os seguintes componentes ainda não estão instalados neste PC:\n\n" +
                            itemsText +
-                           "\nO VoltPulse pode instalar tudo automaticamente agora (usando instaladores oficiais).",
+                           "\nO VoltPulse pode instalar tudo automaticamente agora (usando instaladores oficiais assinados).",
                     ForeColor = Color.FromArgb(203, 213, 225),
                     Size = new Size(460, 120),
                     Location = new Point(24, 56)
@@ -181,10 +279,10 @@ namespace PcPowerMonitor
                 _btnSkip.Enabled = false;
                 _progress.Style = ProgressBarStyle.Marquee;
 
+                string tempDir = Path.Combine(Path.GetTempPath(), "VoltPulseDeps_" + Guid.NewGuid().ToString("N"));
                 try
                 {
-                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | (SecurityProtocolType)3072;
-                    string tempDir = Path.Combine(Path.GetTempPath(), "VoltPulseSetup");
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
                     Directory.CreateDirectory(tempDir);
 
                     string exeDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -202,13 +300,18 @@ namespace PcPowerMonitor
                             await DownloadFileAsync(PawnIoDownloadUrl, installerPath);
                         }
 
+                        SetStatus("Verificando assinatura digital do PawnIO...");
+                        if (!VerifyAuthenticodeSignature(installerPath))
+                        {
+                            throw new InvalidOperationException("Falha na verificação da assinatura digital do instalador PawnIO.");
+                        }
+
                         SetStatus("Instalando driver PawnIO silenciosamente...");
-                        int code = await RunProcessAsync(installerPath, "-install -silent");
+                        int code = await RunProcessAsync(installerPath, "-install -silent", Path.GetDirectoryName(installerPath));
                         if (code != 0 && code != 3010)
                         {
-                            // Fallback interativo caso o silencioso retorne erro
                             SetStatus("Abrindo instalador do PawnIO...");
-                            await RunProcessAsync(installerPath, "");
+                            await RunProcessAsync(installerPath, "", Path.GetDirectoryName(installerPath));
                         }
                     }
 
@@ -218,8 +321,14 @@ namespace PcPowerMonitor
                         string wvInstaller = Path.Combine(tempDir, "MicrosoftEdgeWebview2Setup.exe");
                         await DownloadFileAsync(WebView2DownloadUrl, wvInstaller);
 
+                        SetStatus("Verificando assinatura digital Microsoft do WebView2...");
+                        if (!VerifyAuthenticodeSignature(wvInstaller, "Microsoft"))
+                        {
+                            throw new InvalidOperationException("Falha na verificação da assinatura digital Microsoft do WebView2.");
+                        }
+
                         SetStatus("Instalando Microsoft Edge WebView2 Runtime (pode levar alguns segundos)...");
-                        await RunProcessAsync(wvInstaller, "/silent /install");
+                        await RunProcessAsync(wvInstaller, "/silent /install", tempDir);
                     }
 
                     _progress.Style = ProgressBarStyle.Continuous;
@@ -242,6 +351,10 @@ namespace PcPowerMonitor
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning);
                 }
+                finally
+                {
+                    try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
+                }
             }
 
             private void SetStatus(string text)
@@ -256,13 +369,13 @@ namespace PcPowerMonitor
                 {
                     using (var wc = new WebClient())
                     {
-                        wc.Headers.Add("User-Agent", "VoltPulse-Setup/2.1");
+                        wc.Headers.Add("User-Agent", "VoltPulse-Setup/1.0");
                         wc.DownloadFile(url, destPath);
                     }
                 });
             }
 
-            private static Task<int> RunProcessAsync(string fileName, string arguments)
+            private static Task<int> RunProcessAsync(string fileName, string arguments, string workDir)
             {
                 return Task.Run(() =>
                 {
@@ -270,6 +383,7 @@ namespace PcPowerMonitor
                     {
                         FileName = fileName,
                         Arguments = arguments,
+                        WorkingDirectory = string.IsNullOrEmpty(workDir) ? Path.GetDirectoryName(fileName) : workDir,
                         UseShellExecute = true,
                         Verb = "runas",
                         WindowStyle = string.IsNullOrEmpty(arguments) ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden

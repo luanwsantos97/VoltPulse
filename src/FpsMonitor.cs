@@ -164,12 +164,15 @@ namespace PcPowerMonitor
         }
 
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern uint StartTraceW(out ulong sessionHandle, string sessionName, IntPtr properties);
 
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern uint ControlTraceW(ulong sessionHandle, string sessionName, IntPtr properties, uint controlCode);
 
         [DllImport("advapi32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern uint EnableTraceEx2(
             ulong traceHandle,
             ref Guid providerId,
@@ -181,12 +184,15 @@ namespace PcPowerMonitor
             IntPtr enableParameters);
 
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern ulong OpenTraceW(ref EVENT_TRACE_LOGFILEW logFile);
 
         [DllImport("advapi32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern uint ProcessTrace(ulong[] handleArray, uint handleCount, IntPtr startTime, IntPtr endTime);
 
         [DllImport("advapi32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern uint CloseTrace(ulong traceHandle);
 
         // Estado da sessao e ring buffers fixos separados (DXGI/D3D9 primario + DxgKrnl fallback sem dupla contagem)

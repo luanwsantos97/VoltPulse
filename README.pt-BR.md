@@ -153,15 +153,15 @@ cd VoltPulse
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 # 3. Compilar + gerar o .zip e instalador prontos -> releases/
-powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.3"
+powershell -ExecutionPolicy Bypass -File .\build.ps1 -ReleaseZip -Installer -Version "1.0.4"
 ```
 
 ### Releases Automáticas (GitHub Actions)
 O repositório já vem com [`.github/workflows/release.yml`](.github/workflows/release.yml). Sempre que você enviar uma tag `v*`, o próprio GitHub compila tudo em `windows-latest` e publica automaticamente na página de Releases:
 
 ```bash
-git tag v1.0.3
-git push origin v1.0.3
+git tag v1.0.4
+git push origin v1.0.4
 ```
 
 ### Pré-visualização Rápida da UI no Navegador

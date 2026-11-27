@@ -139,7 +139,7 @@ namespace PcPowerMonitor
 
                 var psi = new ProcessStartInfo
                 {
-                    FileName = "schtasks.exe",
+                    FileName = Path.Combine(Environment.SystemDirectory, "schtasks.exe"),
                     Arguments = args,
                     UseShellExecute = false,
                     CreateNoWindow = true,

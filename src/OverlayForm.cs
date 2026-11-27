@@ -62,20 +62,25 @@ namespace PcPowerMonitor
         private const int VertRowH = 20;
         private const int VertPadV = 7;
 
-        // Win32 Layered Window & Drag APIs
+        // Win32 Layered Window & Drag APIs (somente System32)
         [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool ReleaseCapture();
 
         [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         [DllImport("user32.dll", SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
         [DllImport("user32.dll", SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
         [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool UpdateLayeredWindow(
             IntPtr hwnd,
             IntPtr hdcDst,
@@ -88,21 +93,27 @@ namespace PcPowerMonitor
             int dwFlags);
 
         [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern IntPtr GetDC(IntPtr hWnd);
 
         [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
 
         [DllImport("gdi32.dll", ExactSpelling = true, SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern IntPtr CreateCompatibleDC(IntPtr hDC);
 
         [DllImport("gdi32.dll", ExactSpelling = true, SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool DeleteDC(IntPtr hdc);
 
         [DllImport("gdi32.dll", ExactSpelling = true, SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
 
         [DllImport("gdi32.dll", ExactSpelling = true, SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool DeleteObject(IntPtr hObject);
 
         private const int WM_NCLBUTTONDOWN = 0xA1;

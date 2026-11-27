@@ -79,6 +79,9 @@ namespace PcPowerMonitor
         private const string SubUsb = "2a737441-1930-4402-8d77-b2bebba308a3";
         private const string SetUsbSelectiveSuspend = "48e6b7a6-50f5-4782-a5d4-53bb8f07e226";
 
+        private static readonly string PowerCfgPath = Path.Combine(Environment.SystemDirectory, "powercfg.exe");
+        private static readonly string PowerShellPath = Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe");
+
         private string _nvidiaSmiPath;
         private readonly AmdAdlPowerController _amdAdl = new AmdAdlPowerController();
         private readonly PowerTuningStatus _status = new PowerTuningStatus();
@@ -348,7 +351,7 @@ namespace PcPowerMonitor
                     SetPowerCfgValue(SubProcessor, SetPerfEpp, cpuEpp);
                     SetPowerCfgValue(SubProcessor, SetCoolingPolicy, passiveCooling ? 0 : 1);
                     SetPowerCfgValue(SubPcie, SetPcieAspm, pcieAspmEco ? 2 : 0);
-                    RunHidden("powercfg.exe", "/setactive SCHEME_CURRENT");
+                    RunHidden(PowerCfgPath, "/setactive SCHEME_CURRENT");
                     _powerCfgAppliedOnce = true;
                     _lastPowerCfgSignature = sig;
                 }
@@ -416,7 +419,7 @@ namespace PcPowerMonitor
             {
                 SetPowerCfgValue(SubPcie, SetPcieAspm, 0);
                 SetPowerCfgValue(SubUsb, SetUsbSelectiveSuspend, 0);
-                RunHidden("powercfg.exe", "/setactive SCHEME_CURRENT");
+                RunHidden(PowerCfgPath, "/setactive SCHEME_CURRENT");
                 _status.PcieAspmEco = false;
                 _powerCfgAppliedOnce = false;
                 _lastPowerCfgSignature = null;
@@ -465,7 +468,7 @@ namespace PcPowerMonitor
                     "  $m=Get-NetAdapterAdvancedProperty -Name $n -RegistryKeyword 'MIMOPowerSaveMode';" +
                     "  if($m -and [int]$m.RegistryValue -ne 3){ Set-NetAdapterAdvancedProperty -Name $n -RegistryKeyword 'MIMOPowerSaveMode' -RegistryValue 3; Write-Output 'WIFI_OK' }" +
                     "}";
-                string outStr = RunCommandCapture("powershell.exe", "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"" + psCmd + "\"");
+                string outStr = RunCommandCapture(PowerShellPath, "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"" + psCmd + "\"");
                 if (!string.IsNullOrEmpty(outStr) && outStr.IndexOf("WIFI_OK", StringComparison.OrdinalIgnoreCase) >= 0)
                     wifiTuned = true;
             }
@@ -481,8 +484,8 @@ namespace PcPowerMonitor
 
         private static void SetPowerCfgValue(string subGroup, string settingGuid, int value)
         {
-            RunHidden("powercfg.exe", string.Format("/setacvalueindex SCHEME_CURRENT {0} {1} {2}", subGroup, settingGuid, value));
-            RunHidden("powercfg.exe", string.Format("/setdcvalueindex SCHEME_CURRENT {0} {1} {2}", subGroup, settingGuid, value));
+            RunHidden(PowerCfgPath, string.Format("/setacvalueindex SCHEME_CURRENT {0} {1} {2}", subGroup, settingGuid, value));
+            RunHidden(PowerCfgPath, string.Format("/setdcvalueindex SCHEME_CURRENT {0} {1} {2}", subGroup, settingGuid, value));
         }
 
         private static int RunHidden(string fileName, string args)
@@ -575,33 +578,43 @@ namespace PcPowerMonitor
             }
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_Main_Control_Create(ADL_Main_Memory_Alloc callback, int iEnumConnectedAdapters, out IntPtr context);
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_Main_Control_Destroy(IntPtr context);
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_Adapter_NumberOfAdapters_Get(IntPtr context, out int numAdapters);
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_Adapter_AdapterInfo_Get(IntPtr context, IntPtr info, int inputSize);
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_Overdrive_Caps(IntPtr context, int iAdapterIndex, out int iSupported, out int iEnabled, out int iVersion);
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_OverdriveN_PowerLimit_Get(IntPtr context, int iAdapterIndex, out ADLODNPowerLimitSetting lpODPowerLimit);
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_OverdriveN_PowerLimit_Set(IntPtr context, int iAdapterIndex, ref ADLODNPowerLimitSetting lpODPowerLimit);
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_Overdrive6_PowerControlInfo_Get(IntPtr context, int iAdapterIndex, out ADLOD6PowerControlInfo lpPowerControlInfo);
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_Overdrive6_PowerControl_Get(IntPtr context, int iAdapterIndex, out int lpCurrentValue, out int lpDefaultValue);
 
             [DllImport("atiadlxx.dll", CallingConvention = CallingConvention.Cdecl)]
+            [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
             private static extern int ADL2_Overdrive6_PowerControl_Set(IntPtr context, int iAdapterIndex, int iValue);
 
             private readonly ADL_Main_Memory_Alloc _allocDelegate;
